@@ -1,3 +1,60 @@
+This is retrieved from https://github.com/larsbrinkhoff/emacs-history/blob/sources/reid.org/%7Ebrian/misc/gosling-emacs-1999.tar
+which is untarred and imported here.  I wanted to archive here simply because it is the first big chunk of C code I read and
+I learned a lot from reading the code in the early 1980s.  By then James Gosling had sold rights to Unipress and the
+company I worked for used to have source code license.  We studied it extensively and made our own version of the editor
+at the time.
+
+James Gosling's emacs was there to be useful to Unix users before GNU emacs was available on Unix machines.  GNU didn't exist back then.
+Although my first emacs was TECO based emacs on TOPS-20 on DEC-10 machines, the Gosling emacs was faithful enough and had
+enough enhancements to make it very useful.  The "mock Lisp" was derided by many who were used to MacLisp at the time, but
+it was the first editor I encountered that had Lisp like language as basis for many features and customizations at the time.
+GNU emacs was the second.
+
+My favorite source code here is display.c.  Infamous for its ASCII skull rendering at the beginning, it is also basis of
+a lot of controversy and disputes between James Gosling and Richard Stallman, as to the alleged theft of the display update algorithm.
+
+Here is the beginning of the display.c:
+
+		 /-------------\
+			/		\
+		       /		 \
+		      /			  \
+		      |	  XXXX	   XXXX	  |
+		      |	  XXXX	   XXXX	  |
+		      |	  XXX	    XXX	  |
+		      \		X	  /
+		       --\     XXX     /--
+			| |    XXX    | |
+			| |	      | |
+			| I I I I I I I |
+			|  I I I I I I	|
+			 \	       /
+			  --	     --
+			    \-------/
+		    XXX			   XXX
+		   XXXXX		  XXXXX
+		   XXXXXXXXX	     XXXXXXXXXX
+			  XXXXX	  XXXXX
+			     XXXXXXX
+			  XXXXX	  XXXXX
+		   XXXXXXXXX	     XXXXXXXXXX
+		   XXXXX		  XXXXX
+		    XXX			   XXX
+			  **************
+			  *  BEWARE!!  *
+			  **************
+			All ye who enter here:
+		    Most of the code in this module
+		       is twisted beyond belief!
+			   Tread carefully.
+		    If you think you understand it,
+			      You Don't,
+			    So Look Again.
+
+
+The following is the original README
+=========
+
 This is Gosling Emacs, version 84S, locally modified at decwrl.
 
 THE OFFICIAL SOURCES FOR EMACS ARE KEPT ON acetes:/usr/src/local/emacs under
