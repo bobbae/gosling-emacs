@@ -11,7 +11,7 @@ it was the first editor I encountered that had Lisp like language as basis for m
 GNU emacs was the second.
 
 My favorite source code here is display.c.  Infamous for its ASCII skull rendering at the beginning, it is also basis of
-a lot of controversy and disputes between James Gosling and Richard Stallman, as to the alleged theft of the display update algorithm.
+a lot of very old controversy and disputes between James Gosling and Richard Stallman, as to the alleged theft of the display update algorithm.
 
 Here is the beginning of the display.c:
 
