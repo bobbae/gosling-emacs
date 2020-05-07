@@ -1,0 +1,1317 @@
+TrmC100.c <> vulcan:/udir/haynes/emacs/TrmC100.c
+*** TrmC100.c	Wed May  7 11:42:17 1986
+--- vulcan:/udir/haynes/emacs/TrmC100.c	Tue Mar 13 18:57:11 1984
+***************
+*** 28,34
+  static curHL;
+  static
+  HLmode (on) {
+!     if (curHL == on)
+  	return;
+      printf (on ? (ReverseVideo ? "\033N\150" : "\033N\170")
+  	       : (ReverseVideo ? "\033N\110" : "\033N\110"));
+
+--- 28,34 -----
+  static curHL;
+  static
+  HLmode (on) {
+!     if (tt.t_modeline || curHL == on)
+  	return;
+      printf (on ? (ReverseVideo ? "\033N\110" : "\033N\170")
+  	       : (ReverseVideo ? "\033N\130" : "\033N\110"));
+***************
+*** 30,37
+  HLmode (on) {
+      if (curHL == on)
+  	return;
+!     printf (on ? (ReverseVideo ? "\033N\150" : "\033N\170")
+! 	       : (ReverseVideo ? "\033N\110" : "\033N\110"));
+      curHL = on;
+  }
+  
+
+--- 30,37 -----
+  HLmode (on) {
+      if (tt.t_modeline || curHL == on)
+  	return;
+!     printf (on ? (ReverseVideo ? "\033N\110" : "\033N\170")
+! 	       : (ReverseVideo ? "\033N\130" : "\033N\110"));
+      curHL = on;
+  }
+  
+***************
+*** 217,223
+  delchars (n) {
+      while (--n >= 0) {
+  	putchar (033);
+! 	putchar (17);		/* was 1 -jkf */
+  	pad (tt.t_width - curX,.10);
+      }
+  };
+
+--- 217,223 -----
+  delchars (n) {
+      while (--n >= 0) {
+  	putchar (033);
+! 	putchar (1);
+  	pad (tt.t_width - curX,.10);
+      }
+  };
+***************
+*** 298,301
+  	tt.t_width = 79;
+  	tt.t_length = 60;
+      }
+  };
+
+--- 298,302 -----
+  	tt.t_width = 79;
+  	tt.t_length = 60;
+      }
++     tt.t_modeline = 1;			/* do highlight */
+  };
+TrmTERM.c <> vulcan:/udir/haynes/emacs/TrmTERM.c
+*** TrmTERM.c	Wed May  7 11:36:20 1986
+--- vulcan:/udir/haynes/emacs/TrmTERM.c	Fri Mar 16 10:59:23 1984
+***************
+*** 9,16
+   *              - uses "nl" instead of \n in case \n is destructive
+   *      Modified 8-Sept-81 by JCM @ Stanford
+   *              - re-integrated changes from Gosling since July '81
+-  *      Modified 7 March 1983, Jeffrey Mogul
+-  *              - installed fixes from Chuck Sword (mazama!chuck)
+   */
+  
+  #include <stdio.h>
+
+--- 9,14 -----
+   *		- uses "nl" instead of \n in case \n is destructive
+   *	Modified 8-Sept-81 by JCM @ Stanford
+   *		- re-integrated changes from Gosling since July '81
+   */
+  
+  #include <stdio.h>
+***************
+*** 14,19
+   */
+  
+  #include <stdio.h>
+  #include "config.h"
+  #include "keyboard.h"
+  #include "display.h"
+
+--- 12,18 -----
+   */
+  
+  #include <stdio.h>
++ #include <ctype.h>
+  #include "config.h"
+  #include "keyboard.h"
+  #include "display.h"
+***************
+*** 59,65
+  static
+  setHL () {
+      register char *com;
+!     if (curHL == desHL)
+          return;
+      if(com = desHL ? HLBstr : HLEstr)
+          tputs (com, 0, dumpchar);
+
+--- 58,64 -----
+  static
+  setHL () {
+      register char *com;
+!     if (tt.t_modeline == 0 || curHL == desHL)
+  	return;
+      if(com = desHL ? HLBstr : HLEstr)
+  	tputs (com, 0, dumpchar);
+***************
+*** 189,194
+      static char combuf[1024];
+      extern  old;
+      char   *fill = combuf;
+      static  inited;
+      if (!inited)
+          if (tgetent (tbuf, getenv ("TERM")) <= 0) {
+
+--- 188,194 -----
+      static char combuf[1024];
+      extern  old;
+      char   *fill = combuf;
++     int	    mf, ov;			/* for timing calculations */
+      static  inited;
+      if (!inited)
+      {
+***************
+*** 191,196
+      char   *fill = combuf;
+      static  inited;
+      if (!inited)
+          if (tgetent (tbuf, getenv ("TERM")) <= 0) {
+              stty (1, &old);
+  #ifdef OneEmacsPerTty   /* TPM 31-Jan-82 */
+
+--- 191,198 -----
+      int	    mf, ov;			/* for timing calculations */
+      static  inited;
+      if (!inited)
++     {
++ 	FluidStatic(&inited, sizeof(inited));	/* reset on restart */
+  	if (tgetent (tbuf, getenv ("TERM")) <= 0) {
+  	    stty (1, &old);
+  #ifdef OneEmacsPerTty	/* TPM 31-Jan-82 */
+***************
+*** 198,203
+  #endif
+              quit (1, "No environment-specified terminal type -- see TSET(1), sh(1)\n");
+          }
+      inited = 1;
+      ILstr = tgetstr ("al", &fill);
+      DLstr = tgetstr ("dl", &fill);
+
+--- 200,206 -----
+  #endif
+  	    quit (1, "No environment-specified terminal type -- see TSET(1), sh(1)\n");
+  	}
++     }
+      inited = 1;
+      ILstr = tgetstr ("al", &fill);
+      DLstr = tgetstr ("dl", &fill);
+***************
+*** 226,232
+      NLstr = tgetstr ("nl", &fill);/* JCM -- find out about newline */
+      if (NLstr == 0)
+          NLstr = "\n";           /*   use default if none specified */
+!     MetaFlag = tgetflag ("MT");
+      BEGINstr = tgetstr ("ti", &fill);
+  /*    PC = (tgetstr("pc", &fill)!=0) ? *tgetstr("pc", &fill) : 0; JQJ */
+      PC = 0;
+
+--- 229,235 -----
+      NLstr = tgetstr ("nl", &fill);/* JCM -- find out about newline */
+      if (NLstr == 0)
+  	NLstr = "\n";		/*   use default if none specified */
+!     MetaFlag = tgetflag ("MT") || tgetflag("km");
+      BEGINstr = tgetstr ("ti", &fill);
+  /*    PC = (tgetstr("pc", &fill)!=0) ? *tgetstr("pc", &fill) : 0; JQJ */
+      PC = 0;
+***************
+*** 230,237
+      BEGINstr = tgetstr ("ti", &fill);
+  /*    PC = (tgetstr("pc", &fill)!=0) ? *tgetstr("pc", &fill) : 0; JQJ */
+      PC = 0;
+!     BaudFactor = 1 / (1 - (.45 +.3 * BaudRate / 9600.))
+!         * (BaudRate / 10000.);
+      if (CursStr == 0 || UP == 0 || ELstr == 0 || ESstr == 0) {
+          stty (1, &old);
+  #ifdef OneEmacsPerTty   /* TPM 31-Jan-82 */
+
+--- 233,239 -----
+      BEGINstr = tgetstr ("ti", &fill);
+  /*    PC = (tgetstr("pc", &fill)!=0) ? *tgetstr("pc", &fill) : 0; JQJ */
+      PC = 0;
+!     BaudFactor = BaudRate / 10000.;
+      if (CursStr == 0 || UP == 0 || ELstr == 0 || ESstr == 0) {
+  	stty (1, &old);
+  #ifdef OneEmacsPerTty	/* TPM 31-Jan-82 */
+***************
+*** 240,247
+          quit (1, "Sorry, this terminal isn't powerful enough to run Emacs.\n\
+  It is missing some important features.\n");
+      }
+!     tt.t_ILmf = BaudFactor * 0.75;
+!     tt.t_ILov = ILstr ? 2 : MissingFeature;
+      if (!ILstr)
+          tt.t_inslines = tt.t_dellines = (int (*) ()) - 1;
+      if (VBstr)
+
+--- 242,253 -----
+  	quit (1, "Sorry, this terminal isn't powerful enough to run Emacs.\n\
+  It is missing some important features.\n");
+      }
+!     if (ILstr)
+! 	costof(ILstr, &ov, &mf);
+!     else
+! 	ov = mf = MissingFeature;
+!     tt.t_ILmf = mf;
+!     tt.t_ILov = ov;
+      if (!ILstr)
+  	tt.t_inslines = tt.t_dellines = (int (*) ()) - 1;
+      if (VBstr)
+***************
+*** 247,256
+      if (VBstr)
+          tt.t_flash = flash;
+      if (ICstr && DCstr) {
+!         tt.t_ICmf = 1;
+!         tt.t_ICov = 4;
+!         tt.t_DCmf = 2;
+!         tt.t_DCov = 0;
+      }
+      else {
+          tt.t_ICmf = MissingFeature;
+
+--- 253,269 -----
+      if (VBstr)
+  	tt.t_flash = flash;
+      if (ICstr && DCstr) {
+! 	costof(ICstr, &ov, &mf);
+! 	tt.t_ICov = ov + (ICPstr ? mf : 0);
+! 	if (ICPstr)
+! 	    costof(ICPstr, &ov, &mf);
+! 	else
+! 	    ov = mf + 1;
+! 	tt.t_ICmf = ov;
+! 
+! 	tt.t_DCov = tt.t_ICov;
+! 	costof(DCstr, &ov, &mf);
+! 	tt.t_DCmf = ov + mf;
+      }
+      else {
+  	tt.t_ICmf = MissingFeature;
+***************
+*** 259,266
+          tt.t_DCov = MissingFeature;
+      }
+      tt.t_length = tgetnum ("li");
+! /*  tt.t_width = tgetnum ("co") - (tgetflag ("in") ? 1 : 0); */
+!     tt.t_width = tgetnum ("co") - 1;/* Always lie about the width */
+  };
+  
+  
+
+--- 272,278 -----
+  	tt.t_DCov = MissingFeature;
+      }
+      tt.t_length = tgetnum ("li");
+!     tt.t_width = tgetnum ("co") - (tgetflag ("xn") ? 1 : 0);
+  };
+  
+  static
+***************
+*** 263,268
+      tt.t_width = tgetnum ("co") - 1;/* Always lie about the width */
+  };
+  
+  
+  static
+  reset () {
+
+--- 275,287 -----
+      tt.t_width = tgetnum ("co") - (tgetflag ("xn") ? 1 : 0);
+  };
+  
++ static
++ costof (str, ov, mf)
++ char *str;
++ int *ov, *mf;
++ {
++     register char *cp;
++     int pad;
+  
+      *ov = *mf = pad = 0;
+      for (cp = str; isdigit(*cp); cp++)
+***************
+*** 264,269
+  };
+  
+  
+  static
+  reset () {
+      curX = -1;
+
+--- 283,302 -----
+      register char *cp;
+      int pad;
+  
++     *ov = *mf = pad = 0;
++     for (cp = str; isdigit(*cp); cp++)
++ 	pad = pad * 10 + (*cp - '0');
++     if (*cp == '*')
++     {
++ 	*mf = pad * BaudFactor;
++ 	cp++;
++     }
++     else
++ 	*ov = pad;
++     *ov += strlen(cp);
++     return *ov;
++ }
++ 
+  static
+  reset () {
+      curX = -1;
+***************
+*** 299,305
+  static
+  delchars (n) {
+      if (DMstr) {        /* we may have delete mode, or delete == insert */
+!         if (strcmp(DMstr,ICstr)==0) {
+              if (CurMode  == m_overwrite) {
+                  tputs(ICstr,0,dumpchar);
+                  CurMode = m_insert;     /* we're now in both */
+
+--- 332,338 -----
+  static
+  delchars (n) {
+      if (DMstr) {	/* we may have delete mode, or delete == insert */
+! 	if (strcmp(DMstr,ICstr)) {
+  	    if (CurMode  == m_overwrite) {
+  	        tputs(ICstr,0,dumpchar);
+  		CurMode = m_insert;	/* we're now in both */
+***************
+*** 318,324
+      }
+      if (EDstr) {                /* for some, insert mode == delete mode */
+                  /* bug!  /etc/termcap pads ICEstr but not EDstr */
+!         if (strcmp(DMstr,ICstr)==0)
+              CurMode = m_insert;
+          else
+              tputs(EDstr,0,dumpchar);
+
+--- 351,357 -----
+      }
+      if (EDstr) {		/* for some, insert mode == delete mode */
+  		/* bug!  /etc/termcap pads ICEstr but not EDstr */
+!         if (strcmp(DMstr,ICstr))
+  	    CurMode = m_insert;
+  	else
+  	    tputs(EDstr,0,dumpchar);
+***************
+*** 346,349
+          tt.t_ICov = 0;
+          tt.t_length = 24;
+          tt.t_width = 80;
+  };
+
+--- 379,383 -----
+  	tt.t_ICov = 0;
+  	tt.t_length = 24;
+  	tt.t_width = 80;
++ 	tt.t_modeline = 1;		/* do highlight */
+  };
+TrmVS100.c <> vulcan:/udir/haynes/emacs/TrmVS100.c
+*** TrmVS100.c	Wed May  7 13:45:57 1986
+--- vulcan:/udir/haynes/emacs/TrmVS100.c	Thu Aug 23 13:55:32 1984
+***************
+*** 14,22
+  char PC;
+  short ospeed;
+  
+! static char *InsertLineStr,
+! *DeleteLineStr,
+! *InsertLinesStr,
+  *DeleteLinesStr,
+  *InsertCharStr,
+  *DeleteCharStr,
+
+--- 14,20 -----
+  char PC;
+  short ospeed;
+  
+! static char *InsertLinesStr,
+  *DeleteLinesStr,
+  *InsertCharStr,
+  *DeleteCharStr,
+***************
+*** 84,95
+  	HLmode (0);	
+  	setHL ();
+  	tputs(tgoto (SetScrollRegion, WindowSize-1, curY-1), 0, dumpchar);
+! #ifdef useinsertlines
+! 	tputs(tgoto (InsertLinesStr, n,0), n, dumpchar);
+! #else
+!        while (--n >= 0)
+!                printf(InsertLineStr);
+! #endif
+  	tputs(tgoto (SetScrollRegion, tt.t_length-1, 0), 0, dumpchar);
+  };
+  
+
+--- 82,88 -----
+  	HLmode (0);	
+  	setHL ();
+  	tputs(tgoto (SetScrollRegion, WindowSize-1, curY-1), 0, dumpchar);
+! 	tputs(tgoto (InsertLinesStr, n), n, dumpchar);
+  	tputs(tgoto (SetScrollRegion, tt.t_length-1, 0), 0, dumpchar);
+  };
+  
+***************
+*** 96,107
+  static
+  dellines (n) {
+  	tputs(tgoto (SetScrollRegion, WindowSize-1, curY-1), 0, dumpchar);
+! #ifdef useinsertlines
+! 	tputs(tgoto (DeleteLinesStr, n,0), n, dumpchar);
+! #else
+!        while (--n >= 0)
+!                printf(DeleteLineStr);
+! #endif
+  	tputs(tgoto (SetScrollRegion, tt.t_length-1, 0), 0, dumpchar);
+  }
+  
+
+--- 89,95 -----
+  static
+  dellines (n) {
+  	tputs(tgoto (SetScrollRegion, WindowSize-1, curY-1), 0, dumpchar);
+! 	tputs(tgoto (DeleteLinesStr, n), n, dumpchar);
+  	tputs(tgoto (SetScrollRegion, tt.t_length-1, 0), 0, dumpchar);
+  }
+  
+***************
+*** 203,209
+  		}
+  	}
+  	inited = 1;
+-         InsertLineStr = tgetstr ("al", &fill);
+  	InsertLinesStr = tgetstr ("Al", &fill);
+          DeleteLineStr = tgetstr ("dl", &fill);
+  	DeleteLinesStr = tgetstr ("Dl", &fill);
+
+--- 191,196 -----
+  		}
+  	}
+  	inited = 1;
+  	InsertLinesStr = tgetstr ("Al", &fill);
+  	DeleteLinesStr = tgetstr ("Dl", &fill);
+  	DeleteCharStr = tgetstr ("dc", &fill);
+***************
+*** 205,211
+  	inited = 1;
+          InsertLineStr = tgetstr ("al", &fill);
+  	InsertLinesStr = tgetstr ("Al", &fill);
+-         DeleteLineStr = tgetstr ("dl", &fill);
+  	DeleteLinesStr = tgetstr ("Dl", &fill);
+  	DeleteCharStr = tgetstr ("dc", &fill);
+  	EndLineStr = tgetstr ("ce", &fill);
+
+--- 192,197 -----
+  	}
+  	inited = 1;
+  	InsertLinesStr = tgetstr ("Al", &fill);
+  	DeleteLinesStr = tgetstr ("Dl", &fill);
+  	DeleteCharStr = tgetstr ("dc", &fill);
+  	EndLineStr = tgetstr ("ce", &fill);
+***************
+*** 309,313
+  	tt.t_length = 24;
+  	tt.t_width = 80;
+  	tt.t_modeline = 1;		/* do highlight */
+! }
+  
+
+--- 295,299 -----
+  	tt.t_length = 24;
+  	tt.t_width = 80;
+  	tt.t_modeline = 1;		/* do highlight */
+! };
+display.c <> vulcan:/udir/haynes/emacs/display.c
+*** display.c	Tue May  6 14:38:50 1986
+--- vulcan:/udir/haynes/emacs/display.c	Thu Sep 12 18:47:44 1985
+display.h <> vulcan:/udir/haynes/emacs/display.h
+*** display.h	Tue May  6 14:38:57 1986
+--- vulcan:/udir/haynes/emacs/display.h	Tue Mar 13 18:57:20 1984
+***************
+*** 24,30
+  /* 'dsputc' places a character at the current position on the display,
+   * the character must be a simple one, taking up EXACTLY one position on
+   * the screen.  ie. tabs and \n's shouldn't be passed to dsputc. */
+! #define dsputc(c) (--left>=0 ? (*cursor++ = c) : 0)
+  
+  /* 'setpos' positions the cursor at position (row,col) in the virtual
+   * screen
+
+--- 24,30 -----
+  /* 'dsputc' places a character at the current position on the display,
+   * the character must be a simple one, taking up EXACTLY one position on
+   * the screen.  ie. tabs and \n's shouldn't be passed to dsputc. */
+! #define dsputc(c) (--left>=0 ? *cursor++ = c : 0)
+  
+  /* 'setpos' positions the cursor at position (row,col) in the virtual
+   * screen
+***************
+*** 40,51
+  
+  /* define the named macro to have the given body
+     (or mlisp proc) */
+! DefMac (s, bodyparm, IsMLisp)
+! char *s, *bodyparm;
+! {
+!     register int    i = FindMac (s);
+!     register struct BoundName  *p;
+!     union {
+          struct keymap * b_keymap;
+          struct ProgNode * b_ProgNode;
+          char * b_string;
+
+--- 39,46 -----
+  
+  /* define the named macro to have the given body
+     (or mlisp proc) */
+! DefMac (s, body, IsMLisp)
+! union {
+      struct keymap * b_keymap;
+      struct ProgNode * b_ProgNode;
+      char * b_string;
+***************
+*** 49,56
+          struct keymap * b_keymap;
+          struct ProgNode * b_ProgNode;
+          char * b_string;
+!     } body;
+!     body.b_string = bodyparm;
+      if (i < 0) {
+  	register j;
+  	if (NMacs >= maxmacs) {
+
+--- 44,54 -----
+      struct keymap * b_keymap;
+      struct ProgNode * b_ProgNode;
+      char * b_string;
+! } body;
+! char *s;
+! {
+!     register int    i = FindMac (s);
+!     register struct BoundName  *p;
+      if (i < 0) {
+  	register j;
+  	if (NMacs >= maxmacs) {
+***************
+*** 139,145
+  	GapTo (bf_s1 + bf_s2 + 1);	/* ignoring our abstract data type
+  					   hiding!! */
+  	*(bf_p1 + bf_s1 + 1) = 0;
+! 	DefMac (bf_cur -> b_fname, (bf_p1 + 1), 0);
+  	bf_modified = 0;
+      }
+  }
+
+--- 137,143 -----
+  	GapTo (bf_s1 + bf_s2 + 1);	/* ignoring our abstract data type
+  					   hiding!! */
+  	*(bf_p1 + bf_s1 + 1) = 0;
+! 	DefMac (bf_cur -> b_fname, bf_p1 + 1, 0);
+  	bf_modified = 0;
+      }
+  }
+mlisp.c <> vulcan:/udir/haynes/emacs/mlisp.c
+*** mlisp.c	Tue May  6 14:46:59 1986
+--- vulcan:/udir/haynes/emacs/mlisp.c	Tue Mar 13 18:58:05 1984
+***************
+*** 824,830
+  char *fn;
+  {
+      static char *path;
+!     register int c;
+      char    fnb[300];
+      FILE * old = MLispIn;
+      register rv = 0;
+
+--- 816,822 -----
+  char *fn;
+  {
+      static char *path;
+!     register char   c;
+      char    fnb[300];
+      FILE * old = MLispIn;
+      register rv = 0;
+options.c <> vulcan:/udir/haynes/emacs/options.c
+*** options.c	Tue May  6 14:48:25 1986
+--- vulcan:/udir/haynes/emacs/options.c	Tue Mar 13 18:58:07 1984
+***************
+*** 25,31
+      register char  *nd = getstr (": change-directory ");
+      if (nd == 0)
+  	return 0;
+!     if (e_chdir (nd) < 0)
+  	error ("Can't change to directory %s", nd);
+      return 0;
+  }
+
+--- 23,29 -----
+      register char  *nd = getstr (": change-directory ");
+      if (nd == 0)
+  	return 0;
+!     if (chdir (nd) < 0)
+  	error ("Can't change to directory %s", nd);
+      return 0;
+  }
+***************
+*** 434,474
+      }
+  }
+  
+- PrintBoundName(b)
+-   struct BoundName *b;
+-   {
+-     int i;
+-     fprintf(stderr, "BoundName at %x=>",b);
+-     switch (b->b_binding)
+-     {
+-     case ProcBound:
+-         fprintf(stderr, "wired (%x), %s, %s\n\r",
+- 	    b->b_bound.b_proc, b->b_name, b->b_active? "active": "noactive");
+-         break;
+-     case MacroBound:
+-         fprintf(stderr, "MacroBound (%x), %s, %s %s\n\r",
+- 	    b->b_bound.b_body, b->b_name, b->b_bound.b_body, b->b_active? "active": "noactive");
+-         break;
+-     case AutoLoadBound:
+-         fprintf(stderr, "AutoLoadBound (%x), %s, %s %s\n\r",
+-             b->b_bound.b_body, b->b_name, b->b_bound.b_body, b->b_active?"active":"noactive");
+-         break;
+-     case MLispBound:
+-         fprintf(stderr, "MLispBound (%x), %s, %s\n\r",
+-             b->b_bound.b_prog, b->b_name, b->b_active? "active": "noactive");
+-     case KeyBound:
+-         fprintf(stderr, "KeyBound (%x)\n\r",
+- 	    b->b_bound.b_keymap);
+- 	for (i=0; i++; i<0200){
+- 	    fprintf(stderr, "%x ",b->b_bound.b_keymap[i]);
+- 	    if ( ((i+1)/8)==0) fprintf(stderr, "\n\r");
+- 	}
+-         break;
+-     default:
+-         break;
+-     }
+-   }
+- 
+  PerformBind (tbl, name)
+  register struct keymap **tbl;
+  register struct BoundName *name;
+
+--- 432,437 -----
+      }
+  }
+  
+  PerformBind (tbl, name)
+  register struct keymap **tbl;
+  register struct BoundName *name;
+***************
+*** 558,565
+      register i;
+      if (mapname == 0)
+  	return 0;
+!     m = (struct keymap *) malloc(sizeof (struct keymap));
+!     DefMac (mapname, m, -2);
+      for (i = 0; i<=0177; i++) m->k_binding[i] = 0;
+      return 0;
+  }
+
+--- 521,527 -----
+      register i;
+      if (mapname == 0)
+  	return 0;
+!     DefMac (mapname, m = (struct keymap *) malloc(sizeof (struct keymap)),-2);
+      for (i = 0; i<=0177; i++) m->k_binding[i] = 0;
+      return 0;
+  }
+***************
+*** 641,649
+  	    case ProcBound: 
+  		rv = (*p -> b_bound.b_proc) (-1);
+  		if (ArgState != PreparedArg)
+- #ifdef titan
+- 		    LastProc =  p -> b_bound.b_proc;
+- #else
+  		    LastProc = *p -> b_bound.b_proc;
+  #endif
+  		if (dot < FirstCharacter)
+
+--- 603,608 -----
+  	    case ProcBound: 
+  		rv = (*p -> b_bound.b_proc) (-1);
+  		if (ArgState != PreparedArg)
+  		    LastProc = *p -> b_bound.b_proc;
+  		if (dot < FirstCharacter)
+  		    SetDot (FirstCharacter);
+***************
+*** 645,651
+  		    LastProc =  p -> b_bound.b_proc;
+  #else
+  		    LastProc = *p -> b_bound.b_proc;
+- #endif
+  		if (dot < FirstCharacter)
+  		    SetDot (FirstCharacter);
+  		if (dot > NumCharacters)
+
+--- 604,609 -----
+  		rv = (*p -> b_bound.b_proc) (-1);
+  		if (ArgState != PreparedArg)
+  		    LastProc = *p -> b_bound.b_proc;
+  		if (dot < FirstCharacter)
+  		    SetDot (FirstCharacter);
+  		if (dot > NumCharacters)
+***************
+*** 721,724
+  	DefIntVar ("prefix-argument-provided",
+  		    &ExecutionRoot.PrefixArgumentProvided);
+      }
+! }
+
+--- 679,682 -----
+  	DefIntVar ("prefix-argument-provided",
+  		    &ExecutionRoot.PrefixArgumentProvided);
+      }
+! };
+pchan.c <> vulcan:/udir/haynes/emacs/pchan.c
+No differences encountered
+quit.c <> vulcan:/udir/haynes/emacs/quit.c
+No differences encountered
+recognize.c <> vulcan:/udir/haynes/emacs/recognize.c
+No differences encountered
+search.c <> vulcan:/udir/haynes/emacs/search.c
+*** search.c	Tue May  6 14:49:25 1986
+--- vulcan:/udir/haynes/emacs/search.c	Tue Mar 13 18:58:08 1984
+***************
+*** 15,23
+  #include "search.h"
+  #include <ctype.h>
+  
+- char  *malloc();
+- 
+- 
+  /* meta characters in the "compiled" form of a regular expression */
+  #define	CBRA	2		/* \( -- begin bracket */
+  #define	CCHR	4		/* a vanilla character */
+
+--- 15,20 -----
+  #include "search.h"
+  #include <ctype.h>
+  
+  /* meta characters in the "compiled" form of a regular expression */
+  #define	CBRA	2		/* \( -- begin bracket */
+  #define	CCHR	4		/* a vanilla character */
+***************
+*** 44,50
+  				   REas many times as possible; the value
+  				   ORs with the other operator types */
+  
+! typedef int    TranslateTable[0400];
+  
+  static  TranslateTable
+          StandardTRT,		/* the identity TRT */
+
+--- 41,47 -----
+  				   REas many times as possible; the value
+  				   ORs with the other operator types */
+  
+! typedef char    TranslateTable[0400];
+  
+  static  TranslateTable
+          StandardTRT,		/* the identity TRT */
+***************
+*** 65,71
+  char   *s; {
+      register    pos = dot;
+      register    matl;
+!     register int  *trt;
+  
+      trt = search_globals.TRT = bf_mode.md_FoldCase ? CaseFoldTRT : StandardTRT;
+      if (s == 0)
+
+--- 62,68 -----
+  char   *s; {
+      register    pos = dot;
+      register    matl;
+!     register char  *trt;
+  
+      trt = search_globals.TRT = bf_mode.md_FoldCase ? CaseFoldTRT : StandardTRT;
+      if (s == 0)
+***************
+*** 95,101
+  LookingAt () {			/* (looking-at "str") is true iff we're
+  				   currently looking at the given RE */
+      register char  *s = getstr (": looking-at ");
+!     register int **alt = search_globals.alternatives;
+      if (s == 0)
+  	return 0;
+      compile (s, 1);
+
+--- 92,98 -----
+  LookingAt () {			/* (looking-at "str") is true iff we're
+  				   currently looking at the given RE */
+      register char  *s = getstr (": looking-at ");
+!     register char **alt = search_globals.alternatives;
+      if (s == 0)
+  	return 0;
+      compile (s, 1);
+***************
+*** 398,404
+  /* Compare two chars according to case-fold   APW 1/81 */
+  static
+  CharCompare () {
+!     register int  *trt = search_globals.TRT;
+      register    a = binsetup ();
+      register    b = NumericArg (2);
+      trt = search_globals.TRT = bf_mode.md_FoldCase ? CaseFoldTRT : StandardTRT;
+
+--- 395,401 -----
+  /* Compare two chars according to case-fold   APW 1/81 */
+  static
+  CharCompare () {
+!     register char  *trt = search_globals.TRT;
+      register    a = binsetup ();
+      register    b = NumericArg (2);
+      trt = search_globals.TRT = bf_mode.md_FoldCase ? CaseFoldTRT : StandardTRT;
+***************
+*** 448,456
+  compile (strp, RE)
+  char   *strp; {
+      register    c;
+!     register int  *ep;
+!     int    *lastep;
+!     int     bracket[NBRA],
+             *bracketp;
+      int     cclcnt;
+      int **alt = search_globals.alternatives;
+
+--- 445,453 -----
+  compile (strp, RE)
+  char   *strp; {
+      register    c;
+!     register char  *ep;
+!     char   *lastep;
+!     char    bracket[NBRA],
+             *bracketp;
+      int     cclcnt;
+      char **alt = search_globals.alternatives;
+***************
+*** 453,459
+      int     bracket[NBRA],
+             *bracketp;
+      int     cclcnt;
+!     int **alt = search_globals.alternatives;
+  
+      ep = search_globals.expbuf;
+      *alt++ = ep;
+
+--- 450,456 -----
+      char    bracket[NBRA],
+             *bracketp;
+      int     cclcnt;
+!     char **alt = search_globals.alternatives;
+  
+      ep = search_globals.expbuf;
+      *alt++ = ep;
+***************
+*** 626,632
+  static
+  execute (fflag, addr) {
+      register int    p1 = addr;
+!     register int   *trt = search_globals.TRT;
+      register    c;
+      int     incr = fflag ? 1 : -1;
+  
+
+--- 623,629 -----
+  static
+  execute (fflag, addr) {
+      register int    p1 = addr;
+!     register char  *trt = search_globals.TRT;
+      register    c;
+      int     incr = fflag ? 1 : -1;
+  
+***************
+*** 649,655
+      }
+      else			/* regular algorithm */
+  	do {
+! 	    register int **alt = search_globals.alternatives;
+  	    while (*alt)
+  		if (advance (p1, *alt++)) {
+  		    search_globals.loc1 = p1;
+
+--- 646,652 -----
+      }
+      else			/* regular algorithm */
+  	do {
+! 	    register char **alt = search_globals.alternatives;
+  	    while (*alt)
+  		if (advance (p1, *alt++)) {
+  		    search_globals.loc1 = p1;
+***************
+*** 664,670
+     string lp, simulates an NDFSA */
+  static
+  advance (lp, ep)
+! register int  *ep;
+  register lp; {
+      register curlp;
+      int     i;
+
+--- 661,667 -----
+     string lp, simulates an NDFSA */
+  static
+  advance (lp, ep)
+! register char  *ep;
+  register lp; {
+      register curlp;
+      int     i;
+***************
+*** 668,674
+  register lp; {
+      register curlp;
+      int     i;
+!     register int  *trt = search_globals.TRT;
+  
+      while ((*ep & STAR) || lp <= NumCharacters || *ep == CKET || *ep == EBUF)
+  	switch (*ep++) {
+
+--- 665,671 -----
+  register lp; {
+      register curlp;
+      int     i;
+!     register char  *trt = search_globals.TRT;
+  
+      while ((*ep & STAR) || lp <= NumCharacters || *ep == CKET || *ep == EBUF)
+  	switch (*ep++) {
+***************
+*** 861,867
+  
+  static
+  cclass (set, c, af)
+! register int  *set;
+  register    c;
+  {
+      register    n;
+
+--- 858,864 -----
+  
+  static
+  cclass (set, c, af)
+! register char  *set;
+  register    c;
+  {
+      register    n;
+***************
+*** 865,871
+  register    c;
+  {
+      register    n;
+!     register int  *trt = search_globals.TRT;
+  
+      if (c == 0)
+  	return (0);
+
+--- 862,868 -----
+  register    c;
+  {
+      register    n;
+!     register char  *trt = search_globals.TRT;
+  
+      if (c == 0)
+  	return (0);
+search.h <> vulcan:/udir/haynes/emacs/search.h
+*** search.h	Tue May  6 14:49:33 1986
+--- vulcan:/udir/haynes/emacs/search.h	Tue Mar 13 18:58:09 1984
+***************
+*** 6,13
+  #define NALTS	10		/* the maximum number of \|'s */
+  
+  struct search_globals {	
+!     int  expbuf[ESIZE + 4];	/* The most recently compiled search string */
+!     int  *alternatives[NALTS];	/* The list of \| seperated alternatives */
+      int braslist[NBRA];		/* RE meta-bracket start list */
+      int braelist[NBRA];		/* RE meta-bracket end list */
+      int loc1;			/* The buffer position of the first
+
+--- 6,13 -----
+  #define NALTS	10		/* the maximum number of \|'s */
+  
+  struct search_globals {	
+!     char expbuf[ESIZE + 4];	/* The most recently compiled search string */
+!     char *alternatives[NALTS];	/* The list of \| seperated alternatives */
+      int braslist[NBRA];		/* RE meta-bracket start list */
+      int braelist[NBRA];		/* RE meta-bracket end list */
+      int loc1;			/* The buffer position of the first
+***************
+*** 17,21
+  				   following the most recently found string */
+      int nbra;			/* The number of meta-brackets in the most
+  				   recently compiled RE */
+!     int *TRT;			/* The current translation table */
+  } search_globals;
+
+--- 17,21 -----
+  				   following the most recently found string */
+      int nbra;			/* The number of meta-brackets in the most
+  				   recently compiled RE */
+!     char *TRT;			/* The current translation table */
+  } search_globals;
+sigkludge.c <> vulcan:/udir/haynes/emacs/sigkludge.c
+No differences encountered
+simplecoms.c <> vulcan:/udir/haynes/emacs/simplecoms.c
+*** simplecoms.c	Tue May  6 14:49:56 1986
+--- vulcan:/udir/haynes/emacs/simplecoms.c	Mon May 27 22:24:10 1985
+***************
+*** 361,367
+  }
+  
+  SelfInsert(c)
+! register    c; {
+      register int    p;
+      register int    rep = arg;
+      if (InputFD != stdin)
+
+--- 361,367 -----
+  }
+  
+  SelfInsert(c)
+! register char   c; {
+      register int    p;
+      register int    rep = arg;
+      if (InputFD != stdin)
+sindex.c <> vulcan:/udir/haynes/emacs/sindex.c
+No differences encountered
+subproc.c <> vulcan:/udir/haynes/emacs/subproc.c
+*** subproc.c	Tue May  6 14:50:10 1986
+--- vulcan:/udir/haynes/emacs/subproc.c	Tue Mar 13 18:58:10 1984
+***************
+*** 20,27
+  				   Mchan.c will zero it so we will know it
+  				   has finished */
+  
+- char  *getenv();
+- 
+  /* Copy stuff from indicated file descriptor into the current
+     buffer; return the number of characters read.  This routine is
+     useful when reading from pipes and such.  */
+
+--- 20,25 -----
+  				   Mchan.c will zero it so we will know it
+  				   has finished */
+  
+  /* Copy stuff from indicated file descriptor into the current
+     buffer; return the number of characters read.  This routine is
+     useful when reading from pipes and such.  */
+syntax.c <> vulcan:/udir/haynes/emacs/syntax.c
+*** syntax.c	Tue May  6 14:50:25 1986
+--- vulcan:/udir/haynes/emacs/syntax.c	Tue Mar 13 18:58:12 1984
+***************
+*** 8,16
+  #include "mlisp.h"
+  #include "syntax.h"
+  
+- char  *malloc();
+- 
+- 
+  #define MaxSyntaxTables 40	/* the maximum number of syntax tables */
+  
+  static
+
+--- 8,13 -----
+  #include "mlisp.h"
+  #include "syntax.h"
+  
+  #define MaxSyntaxTables 40	/* the maximum number of syntax tables */
+  
+  static
+syntax.h <> vulcan:/udir/haynes/emacs/syntax.h
+No differences encountered
+test.c <> vulcan:/udir/haynes/emacs/test.c
+ttyaccept.c <> vulcan:/udir/haynes/emacs/ttyaccept.c
+*** ttyaccept.c	Tue May  6 14:50:43 1986
+--- vulcan:/udir/haynes/emacs/ttyaccept.c	Wed Mar 14 13:39:55 1984
+***************
+*** 16,25
+  #include "mlisp.h"
+  #include "mchan.h"
+  
+- char  *malloc();
+- #ifdef titan
+- typedef long * waddr_t;
+- #endif
+  
+  /* Since mpxio isn't around in 4.1a bsd, unexpected processes don't have
+     an mpx file to use attach() on to get Emacs' attention.  This module
+
+--- 16,21 -----
+  #include "mlisp.h"
+  #include "mchan.h"
+  
+  
+  /* Since mpxio isn't around in 4.1a bsd, unexpected processes don't have
+     an mpx file to use attach() on to get Emacs' attention.  This module
+***************
+*** 305,311
+  #endif
+  
+      listen(sd, 5);
+!     ioctl(sd, FIOCLEX, (waddr_t)0);
+      sel_ichans |= 1 << sd;
+  }
+  
+
+--- 301,307 -----
+  #endif
+  
+      listen(sd, 5);
+!     ioctl(sd, FIOCLEX, 0);
+      sel_ichans |= 1 << sd;
+  }
+  
+ttyconnect.c <> vulcan:/udir/haynes/emacs/ttyconnect.c
+No differences encountered
+undo.c <> vulcan:/udir/haynes/emacs/undo.c
+No differences encountered
+undo.h <> vulcan:/udir/haynes/emacs/undo.h
+No differences encountered
+unexec.c <> vulcan:/udir/haynes/emacs/unexec.c
+*** unexec.c	Tue May  6 14:50:57 1986
+--- vulcan:/udir/haynes/emacs/unexec.c	Mon Apr 22 15:47:13 1985
+***************
+*** 119,125
+  static
+  read_u()
+  {
+- #ifndef titan
+      u = *(struct user *)UADDR;    	/* Simple, when it's in core... */
+  #endif
+  }
+
+--- 119,124 -----
+  static
+  read_u()
+  {
+      u = *(struct user *)UADDR;    	/* Simple, when it's in core... */
+  }
+  
+***************
+*** 121,127
+  {
+  #ifndef titan
+      u = *(struct user *)UADDR;    	/* Simple, when it's in core... */
+- #endif
+  }
+  
+  /* ****************************************************************
+
+--- 120,125 -----
+  read_u()
+  {
+      u = *(struct user *)UADDR;    	/* Simple, when it's in core... */
+  }
+  
+  /* ****************************************************************
+***************
+*** 135,141
+  int new, a_out;
+  unsigned data_start, bss_start;
+  {
+- #ifndef titan
+      /* Get symbol table info from header of a.out file if given one. */
+      if ( a_out >= 0 )
+      {
+
+--- 133,138 -----
+  int new, a_out;
+  unsigned data_start, bss_start;
+  {
+      /* Get symbol table info from header of a.out file if given one. */
+      if ( a_out >= 0 )
+      {
+***************
+*** 243,252
+  	return -1;
+      }
+      return 0;
+- #else
+-     perror ( "Can't unexec on titan." );
+-     return -1;
+- #endif
+  }
+  
+  /* ****************************************************************
+
+--- 240,245 -----
+  	return -1;
+      }
+      return 0;
+  }
+  
+  /* ****************************************************************
+***************
+*** 279,285
+  {
+      char page[PSIZE];
+      int n;
+! #ifndef titan
+      if ( a_out < 0 )
+  	return 0;
+  
+
+--- 272,278 -----
+  {
+      char page[PSIZE];
+      int n;
+! 
+      if ( a_out < 0 )
+  	return 0;
+  
+***************
+*** 299,308
+  	fprintf( stderr, "new a.out should be ok otherwise\n" );
+      }
+      return 0;
+- #else
+-    perror( "unexec doesn't work on Titan.");
+-    return 0;
+- #endif
+  }
+  
+  /* ****************************************************************
+
+--- 292,297 -----
+  	fprintf( stderr, "new a.out should be ok otherwise\n" );
+      }
+      return 0;
+  }
+  
+  /* ****************************************************************
+version.c <> vulcan:/udir/haynes/emacs/version.c
+No differences encountered
+window.c <> vulcan:/udir/haynes/emacs/window.c
+*** window.c	Tue May  6 14:51:32 1986
+--- vulcan:/udir/haynes/emacs/window.c	Tue Mar 13 18:58:15 1984
+***************
+*** 12,19
+  #include <ctype.h>
+  #include "mlisp.h"
+  
+- char *malloc();
+- 
+  static
+  struct marker *OneLStart;	/* Starting character position of the line
+  				   containing dot -- used when doing the
+
+--- 12,17 -----
+  #include <ctype.h>
+  #include "mlisp.h"
+  
+  static
+  struct marker *OneLStart;	/* Starting character position of the line
+  				   containing dot -- used when doing the
+***************
+*** 438,444
+  	HighLine ();
+      while (--n >= 0) {
+  	register char   c = *s++;
+- 	char c2;
+  	if (c == 0)
+  	    break;
+  	if (c == 011) {
+
+--- 436,441 -----
+  	HighLine ();
+      while (--n >= 0) {
+  	register char   c = *s++;
+  	if (c == 0)
+  	    break;
+  	if (c == 011) {
+window.h <> vulcan:/udir/haynes/emacs/window.h
+No differences encountered
+windowman.c <> vulcan:/udir/haynes/emacs/windowman.c
+No differences encountered

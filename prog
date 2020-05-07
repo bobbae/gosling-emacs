@@ -1,0 +1,6 @@
+#! /bin/csh -x
+set variable = `cat tmp`
+echo $variable
+foreach f (`cat tmp`)
+echo $f
+end

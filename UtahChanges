@@ -1,0 +1,51 @@
+I have a diff listing with the following changes to Goslings emacs.  If you
+would like a copy of this, send me a note.  Those of you who have already
+requested them don't need to send another.
+
+1. "Preloading" of macro packages.  This is accomplished by running the
+   newly compiled bare emacs, loading any macros you desire, and then
+   executing the (new) function dump-emacs which creates an a.out file
+   with the macros already loaded.  If you have a large .emacs_pro this
+   is a major win.  Works on 4.1 and 4.1a systems (for sure, untested on
+   others).
+
+2. Pty support for 4.1a systems (which don't have MPX files).  I originally
+   got this from someone at Berkeley, but I have fixed a multitude of bugs.
+
+3. A fix for the truncation of strings with null bytes in them.
+
+4. For those of you still using MPX files, a way to keep your terminal from
+   appearing to be idle for hours.  Also a fix which allows you to run
+   the csh (but no job control) in your window.  This has appeared before.
+
+5. A pair of functions which allow you to "pretype" some input for the user,
+   then prompt for more.  We use it for file-name recognition and expansion.
+   One allows blanks, the other doesn't.
+
+6. "on-exit" procedure for subprocesses.  Called whenever the subprocess
+   state changes.
+
+7. await-process-input lets you wait for input from subprocesses without
+   waiting for input from the terminal.
+
+8. A fix so the minibuffer stays visible until you type input from the
+   keyboard.  This was a real loss when you had an active process.
+
+9. Fixes to TrmTERM to do better cost evaluation.
+
+10. A few other cute functions:
+	a. (procedure-type "procedure-name") gives you type of the
+	   procedure as a string, e.g. "wired", "mlisp", etc.
+	b. variable-apropos.  Sort of a kludge, but it works.
+	c. set-auto-fill-hook returns the name of its previous binding
+	   so you can restore it.
+	d. Half Baked mode restored.  Gosling removed it in his latest
+	   release, for reasons unknown to me.  Lets you interrupt
+	   those infinitely looping mlisp functions and kill them dead.
+	   Also has interruptable searches.
+
+Those of you who want the PTY stuff should indicate so in your letter, since
+that code is BIG.  Essentially, I need to send out all of mchan.c for that
+one.
+
+=Spencer

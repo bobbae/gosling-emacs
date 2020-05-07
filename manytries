@@ -1,0 +1,5 @@
+cc -E -O -R -DNewC -c mlisp.c >/tmp/try1
+cc -E -O -R -DNewC -c mlisp.c >/tmp/try2
+cc -E -O -R -DNewC -c mlisp.c >/tmp/try3
+cc -E -O -R -DNewC -c mlisp.c >/tmp/try4
+

@@ -1,0 +1,31 @@
+M  E(M  ESignal 0: no signal
+pc1 = 54656 0xd580, pc2=54657 0xd581
+r1 :          3c5a1 r2 :          cd3e4 r3 :          f25f5 r4 :          3c97d
+r5 :       180c0000 r6 :              c r7 :          cd3f0 r8 :          3c831
+r9 :              0 r10:              0 r11:              0 r12:              0
+r13:              0 r14:              0 r15:              0 r16:              0
+r17:              0 r18:              0 r19:              0 r20:              0
+r21:              0 r22:              0 r23:              0 r24:              0
+r25:              0 r26:              0 r27:              0 r28:              0
+r29:              0 r30:              0 r31:              0 r32:              0
+r33:              0 r34:              0 r35:              0 r36:              0
+r37:              0 r38:              0 r39:              0 r40:              0
+r41:              0 r42:              0 r43:              0 r44:              0
+r45:              0 r46:              0 r47:              0 r48:              0
+r49:              0 r50:              0 r51:              0 r52:              0
+r53:              0 r54:              0 r55:              0 r56:              0
+r57:              0 r58:              0 r59:              0 r60:              0
+r61:         fffdbe r62:          23400 r63:         fffdb8
+frame at: old fp    return    params
+fffdbe:   fffdc5      d045     3c5a1     3c831     333c4     f25f4        9f
+fffdc5:   fffdd8      d986  ffffffff        28        20      e557   3fff668
+fffdd8:   fffde5      f0a7     37e55         0     3c981    fffde4     20a47
+fffde5:   fffe87     100e5     3c981         0         0         0         0
+fffe87:   ffff1e      3098   3fffa30         1  2f756469  722f6d63  64616e69
+ffff1e:        0        2a         1    ffff26    ffff28    ffff26    ffff28
+Error occurred at line 506 in BindToKey
+Called from line 611 in ExecuteBound
+Called from line 383 in ExecProg
+Called from line 863 in ExecuteMLispFile
+Called from line 569 in main
+Called from startupM^ hLrh Buffer: db.out  File: /udir/mcdaniel/db.out   (Normal)  ToprM  S >-!S _M^YhBottomrM> M  S >+!S _Signal 0: no signalM? )M_ L

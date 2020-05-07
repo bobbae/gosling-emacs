@@ -1,0 +1,32 @@
+(defun
+    (begin-block-comment
+	(beginning-of-line)
+	(insert-string "\n/****************************************************************\n")
+	(setq right-margin 77)
+	(setq left-margin 1)
+    )
+
+    (end-block-comment
+	(if (! (bolp)) (newline))
+	(insert-string
+"****************************************************************/\n")
+    )
+
+    (justify-block-comment
+	(save-excursion
+	    (search-reverse "/*****")
+	    (end-of-line)
+	    (forward-character)
+	    (set-mark)
+	    (search-forward "******/")
+	    (beginning-of-line)
+	    (filter-region "fmt")
+	)
+    )
+)
+)
+(local-bind-to-key "begin-block-comment" "{")
+(local-bind-to-key "end-block-comment" "}")
+(local-bind-to-key "justify-block-comment" "j")
+(set prefix-string "block comment")
+

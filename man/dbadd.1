@@ -1,0 +1,48 @@
+.TH DBADD 1
+.SH NAME
+\fBdbadd\fR \- add entry to an Emacs data base
+.br
+\fBdbcreate\fR \- create an Emacs data base
+.br
+\fBdblist\fR \- list contents of an Emacs data base
+.br
+\fBdbprint\fR \- print an entry from an Emacs data base
+.SH SYNOPSIS
+\fBdbadd\fR dbname key
+.br
+\fBdbcreate\fR dbname
+.br
+\fBdblist\fR dbname \fB[ -l ] [ -p \fRnewdbname\fB ]\fR
+.br
+\fBdbprint\fR dbname key
+.SH DESCRIPTION
+
+All of these commands deal with databases used by the Unix Emacs database
+manipulation facilities.  A Unix Emacs database is simply a set of
+(key,content) pairs, as in dbm(3), except that the content part can be a
+very long string.
+
+\fBDbadd\fR adds the text from the standard input to the named database
+using the given key.  \fBDbcreate\fR creates the named database, making it
+empty.  \fBDbprint\fR prints the contents of the entry from the database
+with the given key.
+
+\fBDblist\fR with no arguments simply lists the keys of all he items in the
+database.  With the -\fBl\fR option it prints some internal information from
+the database of no interest to anyone but the implementor.  The -\fBp\fR
+option causes the key and content of every entry to be listed as a shell
+command file which when executed will repeatedly invoke \fBdbadd\fR to
+rebuild the database.  This form of \fBdblist\fR is handy when you want a
+readable ascii file representation of a data base for shipping around or
+editing.  Databases should be recreated periodically to garbage collect them.
+
+.SH FILES
+\fIdbname.\fRdir, \fIdbname.\fRpag, and \fIdbname.\fRdat: the three
+component subfiles of a database.
+.SH "SEE ALSO"
+James Gosling, \fIThe Unix Emacs Manual\fR
+.br
+emacs(1), dbm (3) from which much code was stolen.
+
+.SH AUTHOR
+James Gosling @ CMU

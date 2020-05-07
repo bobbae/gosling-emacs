@@ -1,0 +1,297 @@
+@Article[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Journal=<>,
+   Month=<>,			@? Optional
+   Year=<>,
+   Volume=<>,			@? Optional
+   Number=<>,			@? Optional
+   Pages=<>,
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Book[,
+   Key=<>,
+   Author=<>,			@? or Editor or Editors
+   Editor=<>,			@? or Author or Editors
+   Editors=<>,			@? or Author or Editor
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Publisher=<>,
+   Year=<>,
+   Address=<>,			@? Optional
+   Series=<>,			@? Optional
+   Volume=<>,			@? Optional
+   Edition=<>,			@? Optional
+   Number=<>,			@? Optional
+   Howpublished=<>,		@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Booklet[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Howpublished=<>,		@? Optional
+   Publisher=<>,		@? Optional
+   Year=<>,			@? Optional
+   Month=<>,			@? Optional
+   Address=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Conference[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Meeting=<>,			@? Optional
+   Society=<>,			@? Optional
+   Date=<>,			@? or Year
+   Year=<>,			@? or Date
+   Month=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+   Comment=<APA format only>,
+]
+@Inbook[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Booktitle=<>,		@? Optional
+   Publisher=<>,
+   Year=<>,
+   Editor=<>,			@? Optional
+   Editors=<>,			@? Optional
+   Address=<>,			@? Optional
+   Chapter=<>,			@? Optional
+   Pages=<>,			@? Optional
+   Series=<>,			@? Optional
+   Volume=<>,			@? Optional
+   Number=<>,			@? Optional
+   Edition=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Incollection[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Booktitle=<>,
+   Publisher=<>,
+   Year=<>,
+   Address=<>,			@? Optional
+   Chapter=<>,			@? Optional
+   Pages=<>,			@? Optional
+   Editor=<>,			@? Optional
+   Editors=<>,			@? Optional
+   Series=<>,			@? Optional
+   Volume=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Incollection[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Booktitle=<>,
+   Publisher=<>,
+   Year=<>,
+   Address=<>,			@? Optional
+   Chapter=<>,			@? Optional
+   Pages=<>,			@? Optional
+   Editor=<>,			@? Optional
+   Editors=<>,			@? Optional
+   Series=<>,			@? Optional
+   Volume=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Inproceedings[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Organization=<>,		@? or Publisher
+   Publisher=<>,		@? or Organization
+   Booktitle=<>,
+   Year=<>,
+   Month=<>,			@? Optional
+   Address=<>,			@? Optional
+   Editor=<>,			@? Optional
+   Editors=<>,			@? Optional
+   Series=<>,			@? Optional
+   Volume=<>,			@? Optional
+   Pages=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Inproceedings[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Organization=<>,		@? or Publisher
+   Publisher=<>,		@? or Organization
+   Booktitle=<>,
+   Year=<>,
+   Month=<>,			@? Optional
+   Address=<>,			@? Optional
+   Editor=<>,			@? Optional
+   Editors=<>,			@? Optional
+   Series=<>,			@? Optional
+   Volume=<>,			@? Optional
+   Pages=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Manual[,
+   Key=<>,
+   Title=<>,
+   Year=<>,
+   Month=<>,			@? Optional
+   Address=<>,			@? Optional
+   Author=<>,			@? Optional
+   Fullauthor=<>,		@? Optional
+   Edition=<>,			@? Optional
+   Organization=<>,		@? Optional
+   Fullorganization=<>,		@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Mastersthesis[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   School=<>,
+   Year=<>,
+   Month=<>,			@? Optional
+   Address=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Mastersthesis[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   School=<>,
+   Year=<>,
+   Month=<>,			@? Optional
+   Address=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Misc[,
+   Key=<>,
+   Author=<>,			@? Optional
+   Fullauthor=<>,		@? Optional
+   Title=<>,			@? Optional
+   Year=<>,			@? Optional
+   Howpublished=<>,		@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Phdthesis[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   School=<>,
+   Year=<>,
+   Month=<>,			@? Optional
+   Address=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Phdthesis[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   School=<>,
+   Year=<>,
+   Month=<>,			@? Optional
+   Address=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Proceedings[,
+   Key=<>,
+   Editor=<>,			@? or Organization
+   Organization=<>,		@? or Editor
+   Editors=<>,			@? or Editor
+   Title=<>,
+   Publisher=<>,
+   Year=<>,
+   Address=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Proceedings[,
+   Key=<>,
+   Editor=<>,			@? or Organization
+   Organization=<>,		@? or Editor
+   Editors=<>,			@? or Editor
+   Title=<>,
+   Publisher=<>,
+   Year=<>,
+   Address=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Techreport[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Institution=<>,
+   Year=<>,
+   Number=<>,			@? Optional
+   Month=<>,			@? Optional
+   Type=<>,			@? Optional
+   Address=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Techreport[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Institution=<>,
+   Year=<>,
+   Number=<>,			@? Optional
+   Month=<>,			@? Optional
+   Type=<>,			@? Optional
+   Address=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Unpublished[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Month=<>,			@? Optional
+   Year=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]
+@Unpublished[,
+   Key=<>,
+   Author=<>,
+   Fullauthor=<>,		@? Optional
+   Title=<>,
+   Month=<>,			@? Optional
+   Year=<>,			@? Optional
+   Note=<>,			@? Optional
+   Annote=<>,			@? Optional
+]

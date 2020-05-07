@@ -1,0 +1,198 @@
+/* Terminal control module for Tektronix 4025 */
+
+/******** THIS CODE HAS NOT BEEN FULLY DEBUGGED *********/
+
+/*	Tektronix makes great scopes, but their terminals are another thing */
+/*	entirely.  This was written so no one else will have to waste their */
+/*	time on it.	-- TVR/Feb81					    */
+/*	Rewritten from Concept-100 driver (which was copyright 1981,1980 by */
+/*	James Gosling)							    */
+/* Modified: 26 Feb 81 (JCMogul) - defines null HLmode rather than as zero */
+
+#include <stdio.h>
+#include "display.h"
+
+static
+int	curX, curY;
+static
+int	WindowSize;
+
+static
+char	tekesc;
+
+static
+enum IDmode { m_insert = 1, m_overwrite = 0 }
+	CurMode;
+
+static
+INSmode (new)
+enum IDmode new; {
+	CurMode = new;
+};
+
+static
+HLmodeNull(on)
+{	/* TVR - I don't know how to do this */
+}
+
+
+static
+inslines (n) {
+    /* Stupid TEK4025 does insert AFTER cursor.  Can't insert at line 1!!! */
+    /* We compensate by putting line 1 offscreen. Sigh...  See 'topos'     */
+    if (curY>1)
+	    printf ("\013%cILI %d\r",tekesc,n); 
+	else
+	    printf ("\013%cILI %d%cRUP\r",tekesc,n,tekesc);
+};
+
+static
+dellines (n) {
+    printf ("%cDLI %d\r",tekesc,n); 
+};
+
+static
+writechars (start, end)
+register char	*start,
+		*end; {
+    if (CurMode == m_insert) {
+	printf ("%cICH\r",tekesc);
+    }
+    while (start <= end) {
+	putchar (*start++);
+	curX++;
+    }
+    if (CurMode == m_insert) {
+	printf("%cICH\r",tekesc);
+    }
+};
+
+static
+blanks (n) {
+    /* See 'writechars' for remarks about insert mode. */
+    /* We could optimize here by sending tabs, which erase. */
+    if (CurMode == m_insert) {
+	printf ("%cICH\r",tekesc);
+    }
+    while (--n >=0) {
+	putchar (' ');
+	curX++;
+    }
+    if (CurMode == m_insert) {
+	printf("%cICH\r", tekesc);
+    }
+};
+
+static float BaudFactor;
+
+static pad(n,f)
+float   f; {
+    register    k = n * f * BaudFactor;
+    while (--k >= 0)
+	putchar (0);
+};
+
+static
+topos (row, column) register row, column; {
+    /* CAUTION: Because Insert Line won't work on the top line, display is */
+    /*		used with screen rolled up one line, so logical line 1 is  */
+    /*		the terminal's line 2.  But either due to a firmware bug   */
+    /*		(or brain damage in the microprogrammer), it can't do abs. */
+    /*		cursor positioning anyway.  However, it can go move the    */
+    /*		cursor by a numeric amount.				   */
+    if (curX > 80) {
+	curX = curX - 80;
+	curY++;
+    }
+    if (curY == row) {
+	if (curX == column)
+	    return;
+	if (curX == column + 1) {
+	    putchar (010);
+	    goto done;
+	}
+    }
+    /* I couldn't get LF to do the right thing, although i'm not sure	*/
+    /* why.  Maybe you know more than i.  TVR/Feb81			*/
+    if (row < curY) printf("%cUP %d\r",tekesc,curY-row);
+    else if (row > curY) printf("%cDOW %d\r",tekesc,row-curY);
+
+    if (column > curX) printf("%cRIG %d\r",tekesc,column-curX);
+    else if (column < curX - 7) printf("%cLEF %d\r",tekesc,curX-column);
+    else while (column < curX) {
+	putchar(010);
+	curX--;
+	};
+done:
+    curX = column;
+    curY = row;
+};
+
+static
+init (BaudRate) {
+    BaudFactor = 1 / (1 - (.45 +.3 * BaudRate / 9600.)) * (BaudRate / 10000.);
+};
+
+static
+reset () {
+    tekesc = 28;	/* What VI uses.  We could use something else. */
+    printf ("%cCLE",tekesc);
+    wipescreen();
+    CurMode = m_overwrite;
+};
+
+static
+cleanup () {
+    wipescreen();
+};
+
+static
+wipeline () {
+    register cnt = 80 - curX;
+    if (curX == 1) {
+	dellines (1);
+	inslines (1);
+    }
+    else {
+        while (--cnt >= 0) { putchar(' '); };
+        printf("%cLEF %d\r",tekesc,80 - curX);
+    }
+};
+
+static
+wipescreen () {
+    printf ("%cERA%cDOW 35%cUP 34\r",tekesc,tekesc,tekesc);
+    curX = curY = 1;
+};
+
+static
+delchars (n) {
+    printf ("%cDCH %d\r",tekesc,n);
+};
+
+
+TrmTEK4025 () {
+    tt.t_INSmode = INSmode;
+    tt.t_HLmode = HLmodeNull;
+    tt.t_inslines = inslines;
+    tt.t_dellines = dellines;
+    tt.t_blanks = blanks;
+    tt.t_init = init;
+    tt.t_cleanup = cleanup;
+    tt.t_wipeline = wipeline;
+    tt.t_wipescreen = wipescreen;
+    tt.t_topos = topos;
+    tt.t_reset = reset;
+    tt.t_delchars = delchars;
+    tt.t_writechars = writechars;
+    tt.t_window = 0;
+    tt.t_ILmf = 0;
+    tt.t_ILov = 9;
+    tt.t_ICmf = 1;
+    tt.t_ICov = 4;
+    tt.t_DCmf = 2;
+    tt.t_DCov = 0;
+    tt.t_length = 34;
+    tt.t_width = 80;
+    tt.t_modeline = 0;			/* no highlighting anyway */
+}

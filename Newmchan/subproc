@@ -1,0 +1,381 @@
+>From mrose.uci@Rand-Relay Thu May  5 21:14:11 1983
+Date: 05 May 83 18:42:59 PST (Thu)
+From: Marshall Rose <mrose.uci@Rand-Relay>
+Return-Path: <Mrose.UCI.UCI@Rand-Relay>
+To: UTAH-GR.thomas@UTAH-CS
+
+#! /bin/csh -f
+echo 'Extracting subproc.c'
+cat <<'//go.sysin dd * xyzzy' > 'subproc.c'
+
+/* stuff to handle subprocesses */
+
+/*		Copyright (c) 1981,1980 James Gosling		*/
+
+#include "keyboard.h"
+#include "buffer.h"
+#include "window.h"
+#include <signal.h>
+#include <wait.h>
+#include "config.h"
+
+#ifdef UciFeatures
+#include "mlisp.h"		
+#include <ctype.h>
+
+int UseUsersShell;		/* Use $SHELL, else use sh (much faster) */
+#endif
+
+int     subproc_id;		/* The process id of a subprocess
+				   started by the old subproc stuff.
+				   Mchan.c will zero it so we will know it
+				   has finished */
+#ifdef UmcpFeatures
+int	UseCshOptionF;		/* True iff user wants '-f' option to csh */
+#endif
+
+/* Copy stuff from indicated file descriptor into the current
+   buffer; return the number of characters read.  This routine is
+   useful when reading from pipes and such.  */
+ReadPipe (fd, display) {
+    register int    red = 0;
+    register int    n;
+    char    buf[1000];
+    if (display)
+	message ("Starting up...");
+    if (display)
+	DoDsp (1);
+    while ((n = read (fd, buf, 1000)) > 0) {
+	InsCStr (buf, n);
+	red += n;
+	if (display) {
+	    message ("Chugging along...");
+	    DoDsp (1);
+	}
+    }
+    if (display)
+	message ("Done!");
+    return red;
+}
+
+/* execute a subprocess with the output being stuffed into the named
+   buffer. */
+ExecBf (buffer, display, input, erase, command)
+char   *buffer,
+       *command; {
+    struct buffer  *old = bf_cur;
+    int     fd[2];
+    int     pid,
+            status,
+            thispid;
+
+    SetBfn (buffer);
+    if(interactive) WindowOn (bf_cur);
+    if(erase) EraseBf (bf_cur);
+    pipe (fd);
+    sighold (SIGCHLD);		/* prevent deadlocking */
+    if ((subproc_id = vfork ()) == 0) {
+	close (0);
+	close (1);
+	close (2);
+	if(open (input, 0) != 0) {
+	    write (fd[1], "Couldn't open input file\n", 25);
+	    _exit (-1);
+	}
+	dup (fd[1]);
+	dup (fd[1]);
+	close (fd[1]);
+	close (fd[0]);
+	execvp (command, &command);
+	write (1, "Couldn't execute the program!\n", 30);
+	_exit (-1);
+    }
+    close (fd[1]);
+    sigrelse(SIGCHLD);
+#ifdef	UciFeatures
+    if (subproc_id < 0) {
+	subproc_id = 0;
+	close (fd[0]);
+	error ("Fork failed");
+	return;
+    }
+#endif
+    ReadPipe (fd[0], interactive && display);
+    close (fd[0]);
+loop:
+    sighold(SIGCHLD);		/* We shouldn't have to hold the signal, but*/
+    if(subproc_id){		/* we will just in case */
+	sigpause(SIGCHLD);
+	goto loop;
+    }
+    sigrelse(SIGCHLD);
+
+    bf_modified = 0;
+    if(interactive) WindowOn (old);
+}
+
+/* pass the region starting at dot and extending for n characters through
+   the command.  The old contents of the region is left in the kill
+   buffer */
+FilterThrough (n, command, c2,c3,c4,c5,c6) {
+	char tempfile[40];
+	register struct buffer *old = bf_cur;
+	register struct buffer *kill = DelToBuf (n, 0, 1, "Kill buffer");
+	strcpy(tempfile,"/tmp/emacsXXXXXX");
+#ifdef UciFeatures
+	if (ReadOnly) {
+	    error ("Buffer %s is read-only", bf_cur -> b_name);
+	    return;
+	}
+#endif
+	if (kill) kill->b_mode.md_NeedsCheckpointing = 0;
+	mktemp (tempfile);
+	SetBfn ("Kill buffer");
+	WriteFile (tempfile, 0);
+	chmod (tempfile, 0600);
+	SetBfp (old);
+	ExecBf (bf_cur->b_name, 0, tempfile, 0, command, c2,c3,c4,c5,c6);
+	bf_modified++;
+	unlink(tempfile);
+}
+
+IndentCProcedure () {
+    register    pos = search ("^}", 1, dot - 3, 1);
+    register    spos;
+    register    nest = 0;
+    if (pos <= 0) {
+	error ("Can't find procedure boundary");
+	return 0;
+    }
+    spos = pos;
+    pos = ScanBf ('\n', pos, 1);
+    while (spos > 1) {
+	register char   c = CharAt (spos);
+	if (c == '}')
+	    nest++;
+	if (c == '{') {
+	    nest--;
+	    if (nest <= 0)
+		break;
+	}
+	spos--;
+    }
+    if (nest == 0) {
+	SetDot (ScanBf ('\n', spos, -1));
+	FilterThrough (pos - dot, "indent", "-st", 0);
+    }
+    else
+	error ("Can't find procedure boundary");
+    return 0;
+}
+
+char   *shell () {		/* return the name of the users shell */
+    static char *sh;
+#ifdef UciFeatures
+    if (!UseUsersShell)	/* does user always want the 'sh' */
+	return "sh";	/*  yes, so return it without effecting sh */
+#endif
+    if (!sh)
+	sh = (char *) getenv ("SHELL");
+    if (!sh)
+	sh = "sh";
+    return sh;
+}
+
+CompileIt () {
+    register char  *com = 0;
+    register struct buffer *old = bf_cur;
+    static char CompileCommand[300];
+    if (ModWrite ()) {
+    /* this test really shouldn't be done this way, all the prefix
+       numeric argument stuff needs to be rationalized */
+	if (ArgState==HaveArg || !interactive) {
+	    com = getstr ("Compilation command: ");
+	    if (com == 0)
+		return 0;
+	    if(*com) strcpy(CompileCommand, com);
+#ifndef UmcpFeatures
+	    ExecBf ("Error log", 1, "/dev/null", 1,
+		shell (), "-c", CompileCommand, 0);
+#else
+	    ExecBf ("Error log", 1, "/dev/null", 1,
+#ifdef UciFeatures
+		shell (), UseCshOptionF && UseUsersShell ? "-cf" : "-c", 
+#else
+		shell (), UseCshOptionF ? "-cf" : "-c", 
+#endif
+		CompileCommand, 0);
+#endif
+	}
+	else
+	    ExecBf ("Error log", 1, "/dev/null", 1, "make", "-k", 0);
+	SetBfn ("Error log");
+	if (!err) ParseErb (1, NumCharacters);
+	SetBfp (old);
+    }
+    return 0;
+}
+
+ExecuteMonitorCommand () {
+    char   *com = getstr ("Unix command: ");
+    if (com == 0)
+	return 0;
+    ExecBf ("Command execution", 1, "/dev/null", 1,
+	    shell (), "-c", com, 0);
+    return 0;
+}
+
+ReturnToMonitor () {		/* ^_ */
+    register    pid;
+#ifndef HalfBaked
+    int     (*prevHUP) ();
+    int     (*prevINT) ();
+    int     (*prevQUIT) ();
+#endif
+    extern int  subproc_id;
+/*  char    buf[50]; */
+/* All of the prompt-setting for inferior shells has been commented out, it
+   doesn't work with the C shell, whose use seems unavoidable */
+/*  char   *prompt = (char *) getenv ("PS1"); */
+
+    RstDsp ();
+#ifdef UmcpFeatures
+    SuspendMpx ();
+#endif
+/*  putenv ("PS1", sprintf (buf, "[emacs]	%s",
+		prompt ? prompt : "$ ")); */
+    if ((subproc_id = vfork ()) == 0) {
+	execlp (shell (), "sh", "-i", 0);
+	_exit (-1);
+    }
+#ifdef	UciFeatures
+    if (subproc_id < 0) {
+	subproc_id = 0;
+#ifdef	UmcpFeatures
+	ResumeMpx ();
+#endif
+	InitDsp ();
+	error ("Fork failed");
+	return 0;
+    }
+#endif
+#ifndef HalfBaked
+    prevHUP = signal (SIGHUP, SIG_IGN);
+    prevINT = signal (SIGINT, SIG_IGN);
+    prevQUIT = signal (SIGQUIT, SIG_IGN);
+#else
+    sigignore (SIGHUP);
+    sigignore (SIGINT);
+    sigignore (SIGQUIT);
+#endif
+loop: 
+    sighold (SIGCHLD);
+    if (subproc_id) {
+	sigpause (SIGCHLD);
+	goto loop;
+    }
+    sigrelse (SIGCHLD);
+
+#ifndef HalfBaked
+    signal (SIGHUP, prevHUP);
+    signal (SIGINT, prevINT);
+    signal (SIGQUIT, prevQUIT);
+#else
+    sigrelse (SIGHUP);
+    sigrelse (SIGINT);
+    sigrelse (SIGQUIT);
+#endif
+
+/*  putenv ("PS1", sprintf (buf, "%s", prompt ? prompt : "$ ")); */
+#ifdef UmcpFeatures
+    ResumeMpx ();
+#endif
+    InitDsp ();
+    return 0;
+}
+
+/* Relinquish control of the terminal to the shell */
+PauseEmacs () {
+#ifdef SIGTSTP
+    RstDsp ();
+#ifdef UmcpFeatures
+    SuspendMpx ();
+#endif
+    kill (0, SIGTSTP);
+#ifdef UmcpFeatures
+    ResumeMpx ();
+#endif
+    InitDsp ();
+#else
+    error("pause-emacs doesn't work in this version of Unix.");
+#endif
+    return 0;
+}
+
+NextError () {
+    NextErr ();
+    return 0;
+}
+
+static
+FilterRegion () {
+    register char  *s;
+    if (bf_cur -> b_mark == 0) {
+	error ("Mark not set");
+	return 0;
+    }
+    s = getstr (": filter-region (through command) ");
+    if (s) {
+	char saveit[300];
+	strcpy (saveit, s);	/* what the world needs is a language with
+				   real strings. */
+#ifndef UmcpFeatures
+	FilterThrough (ToMark (bf_cur->b_mark) - dot, shell (), "-c", saveit, 0);
+#else
+#ifdef UciFeatures
+	FilterThrough (ToMark (bf_cur->b_mark) - dot, shell (),
+		UseCshOptionF && UseUsersShell ? "-cf" : "-c" , saveit, 0);
+#else
+	FilterThrough (ToMark (bf_cur->b_mark) - dot, shell (),
+		UseCshOptionF ? "-cf" : "-c" , saveit, 0);
+#endif
+#endif
+    }
+    return 0;
+}
+
+/* Parse all of the error messages found in a region */
+ParseErrorMessagesInRegion () {
+    register    left,
+                right = dot;
+    if (bf_cur -> b_mark == 0)
+	error ("Mark not set.");
+    else {
+	left = ToMark (bf_cur -> b_mark);
+	if (left > right)
+	    right = left, left = dot;
+	ParseErb (left, right);
+    }
+    return 0;
+}
+
+InitProc () {
+    setkey (GlobalMap, (Ctl ('_')), ReturnToMonitor, "return-to-monitor");
+    defproc (FilterRegion, "filter-region");
+    defproc (ParseErrorMessagesInRegion, "parse-error-messages-in-region");
+    defproc (PauseEmacs, "pause-emacs");
+    setkey (CtlXmap, (Ctl ('E')), CompileIt, "compile-it");
+    setkey (CtlXmap, (Ctl ('N')), NextError, "next-error");
+    setkey (CtlXmap, ('!'), ExecuteMonitorCommand, "execute-monitor-command");
+    setkey (ESCmap, ('j'), IndentCProcedure, "indent-C-procedure");
+#ifdef UmcpFeatures
+    DefIntVar ("use-csh-option-f", &UseCshOptionF);
+#endif
+
+#ifdef UciFeatures
+    UseUsersShell = 1;		/* default: use users shell */
+    DefIntVar("use-users-shell", &UseUsersShell);
+#endif
+}
+'//go.sysin dd * xyzzy'
+

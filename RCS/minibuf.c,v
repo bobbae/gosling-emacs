@@ -1,0 +1,1174 @@
+head	1.9;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.9
+date	93.08.11.21.51.24;	author reid;	state Exp;
+branches;
+next	1.8;
+
+1.8
+date	93.08.11.19.39.54;	author reid;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	93.08.11.18.23.54;	author reid;	state Exp;
+branches;
+next	1.6;
+
+1.6
+date	93.08.11.05.18.55;	author reid;	state Exp;
+branches;
+next	1.5;
+
+1.5
+date	93.01.19.14.52.02;	author mogul;	state Exp;
+branches;
+next	1.4;
+
+1.4
+date	93.01.11.13.25.06;	author mogul;	state Exp;
+branches;
+next	1.3;
+
+1.3
+date	88.09.28.22.19.28;	author reid;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	86.05.06.14.43.43;	author mcdaniel;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	86.04.16.13.53.22;	author mcdaniel;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.9
+log
+@One more iteration in the BSDI/MIPS/Alpha interoperability wars
+from some code that predates stdio
+@
+text
+@/* Routines to handle the minibuffer (the one-line display at the
+   bottom of the screen) */
+
+/*		Copyright (c) 1981,1980 James Gosling		*/
+
+/* Modified DJH 7-Dec-80	Added InitMiniBuf
+ * 				Make help on getword errors optional
+ * $Log: minibuf.c,v $
+ * Revision 1.8  1993/08/11  19:39:54  reid
+ * Brian re-fixing MIPS changes necessitated by BSDI changes breaking
+ * Alpha. Ah, the joys of multiple versions.
+ *
+ * Revision 1.7  1993/08/11  18:23:54  reid
+ * Get it working on alpha again after BSDI changes.
+ *
+ * Revision 1.6  1993/08/11  05:18:55  reid
+ * Changes for BSDI, by Brian. Whew. When I first put this VarArgs stuff
+ * in back in 1988 for the pmax, I didn't really understand it, and now
+ * I'm paying the price. Tons of cleanup of varargs routines.
+ *
+ * Revision 1.5  1993/01/19  14:52:02  mogul
+ * Export a variable used in filecomp.c
+ *
+ * Revision 1.4  93/01/11  13:25:06  mogul
+ * Bug fixes for MIPS, Alpha
+ * 
+ * Revision 1.3  1988/09/28  22:19:28  reid
+ * fixed a lot of VARARGS problems.
+ *
+ * Revision 1.2  86/05/06  14:43:43  mcdaniel
+ * 
+ * 
+ * Revision 1.1  86/04/16  13:53:22  mcdaniel
+ * Initial revision
+ * 
+ */
+#include "buffer.h"
+#include "window.h"
+#include "keyboard.h"
+#include "mlisp.h"
+#ifdef pmax
+#include <varargs.h>
+#endif pmax
+#include <ctype.h>
+
+#define BufferSize 2000
+extern int PopUpWindows;		/* for RemoveHelpWindow */
+static char buf[BufferSize];
+static StackTraceOnError;	/* if true, whenever an error is encountered
+				   a stack trace will be dumped to the stack
+				   trace buffer */
+
+
+#ifndef	pmax
+/* sprintrmt(arg) effectively does an sprintf(buf,arg[0],arg[1],...); */
+sprintrmt(buf, arg)
+char *buf;
+register char **arg; {
+	FILE _strbuf;
+
+	_strbuf._flag = _IOSTRG;
+	_strbuf._ptr = (unsigned char *)buf;
+	_strbuf._cnt = BufferSize;
+	_doprnt(*arg, arg+1 , &_strbuf);
+	putc('\0', &_strbuf);
+}
+#endif	pmax
+
+#ifndef __osf__
+/* This is the same as the standard sprintf (buf, ...) except that it
+   guarantees to return buf */
+/* VARARGS */
+#ifndef pmax
+char *sprintf (buf, fmt, args)
+char *buf, *fmt; {
+	FILE _strbuf;
+
+	_strbuf._flag = _IOSTRG;
+	_strbuf._ptr = buf;
+	_strbuf._cnt = 10000;
+	_doprnt(fmt, &args, &_strbuf);
+	putc('\0', &_strbuf);
+	return buf;
+}
+#else pmax
+#ifdef i386
+int sprintf(buf, fmt, va_alist)
+#else  i386
+char *sprintf(buf, fmt, va_alist)
+#endif i386
+char *buf, *fmt;
+va_dcl
+{
+	FILE _strbuf;
+	va_list ap;
+
+	va_start(ap);
+#ifdef i386
+	_strbuf._flags = __SWR | __SSTR;
+        _strbuf._bf._base = _strbuf._p = (unsigned char *)buf;
+        _strbuf._bf._size = _strbuf._w = 10000;
+
+	(void) vfprintf(&_strbuf, fmt, ap);
+	va_end(ap);
+	putc('\0', &_strbuf);
+	return (int) buf;
+#else  i386
+	_strbuf._flag = _IOSTRG;
+	_strbuf._ptr = buf;
+	_strbuf._cnt = 10000;
+	(void)_doprnt(fmt, ap, &_strbuf);
+	va_end(ap);
+	putc('\0', &_strbuf);
+	return buf;
+#endif i386
+}
+#endif pmax
+#else   __osf__
+/* In OSF, sprintf() returns int */
+#endif	__osf__
+
+/* This is the same as sprintf (buf, ...) except that it guards against
+   buffer overflow */
+/* VARARGS */
+#ifndef pmax
+char *sprintfl (buf, len, fmt, args)
+char *buf, *fmt; {
+	FILE _strbuf;
+
+	_strbuf._flag = _IOSTRG;
+	_strbuf._ptr = buf;
+	_strbuf._cnt = len-1;
+	_doprnt(fmt, &args, &_strbuf);
+	putc('\0', &_strbuf);
+	buf[len-1] = 0;
+	return buf;
+}
+#else pmax
+
+char *sprintfl(buf, len, fmt, va_alist)
+int len;
+char *buf, *fmt;
+va_dcl
+{
+	FILE _strbuf;
+	va_list ap;
+
+#if defined(i386) || defined (__osf__)
+#ifdef	__osf__
+	_strbuf._ptr = (unsigned char *)buf;
+	_strbuf._flag = _IOSTRG;
+	_strbuf._cnt = 10000;
+#else   __osf__
+        _strbuf._bf._base = _strbuf._p = (unsigned char *)buf;
+	_strbuf._flags = __SWR | __SSTR;
+        _strbuf._bf._size = _strbuf._w = 10000;
+#endif  __osf
+	va_start(ap);
+	(void) vfprintf(&_strbuf, fmt, ap);
+	va_end(ap);
+	putc('\0', &_strbuf);
+	buf[len-1] = 0;
+	return buf;
+#else  __osf__ || i386
+	_strbuf._flag = _IOSTRG;
+	_strbuf._ptr = buf;
+	_strbuf._cnt = 10000;
+	va_start(ap);
+	(void)_doprnt(fmt, ap, &_strbuf);
+	va_end(ap);
+	putc('\0', &_strbuf);
+	buf[len-1] = 0;
+	return  buf;
+#endif i386
+}
+#endif pmax
+
+
+#if 0
+char *sprintfl(buf, len, fmt, va_alist)
+char *buf, *fmt;
+int len;
+va_dcl
+{
+	FILE _strbuf;
+	va_list ap;
+
+	va_start(ap);
+	_strbuf._flag = _IOSTRG;
+#ifdef	__osf__
+	_strbuf._ptr = (unsigned char *)buf;
+	_strbuf._cnt = 10000;
+	(void)_doprnt(fmt, ap, &_strbuf);
+#else 
+	_strbuf._ptr = (char *)buf;
+	_strbuf._cnt = 10000;
+	(void)_doprnt(fmt, ap, &_strbuf);
+#endif	__osf__
+	putc('\0', &_strbuf);
+	buf[len-1] = 0;
+	return buf;
+}
+#endif 0
+
+
+
+/* dump an error message; called like printf */
+/* VARARGS 1 */
+#ifndef pmax
+error (m)
+char * m; {
+    NextLocalKeymap = 0;
+    NextGlobalKeymap = 0;
+    if(err && MiniBuf) return;	/* the first error message probably makes the
+				   most sense, so we suppress subsequent
+				   ones. */
+    err++;
+    sprintrmt (buf, &m);
+    MiniBuf = buf;
+    DumpMiniBuf++;
+    if (StackTraceOnError && CurExec) DumpStackTrace ();
+}
+#else pmax
+error (fmt, va_alist)
+char *fmt;
+va_dcl
+{
+    va_list ap;
+
+    NextLocalKeymap = 0;
+    NextGlobalKeymap = 0;
+    if(err && MiniBuf) return;	/* the first error message probably makes the
+				   most sense, so we suppress subsequent
+				   ones. */
+    err++;
+    va_start(ap);
+    vsprintf(buf, fmt, ap);
+    va_end(ap);
+    MiniBuf = buf;
+    DumpMiniBuf++;
+    if (StackTraceOnError && CurExec) DumpStackTrace ();
+}
+#endif pmax
+/* dump an informative message to the minibuf */
+/* VARARGS 1 */
+#ifndef pmax
+message (m)
+char * m; {
+    if(!interactive || err && MiniBuf) return;
+    sprintrmt (buf, &m);
+    MiniBuf = buf;
+    DumpMiniBuf++;
+}
+#else pmax
+message (fmt, va_alist)
+char *fmt;
+va_dcl
+{
+    va_list ap;
+
+    if(!interactive || err && MiniBuf) return;
+    va_start(ap);
+    vsprintf(buf, fmt, ap);
+    va_end(ap);
+    MiniBuf = buf;
+    DumpMiniBuf++;
+}
+#endif pmax
+/* read a number from the terminal with prompt string s */
+/* VARARGS 1 */
+#ifndef pmax
+getnum (s)
+char * s; {	/* gmcd */
+    register char  *p,
+                   *answer;
+    if (CurExec) {		/* we are being called from an
+				   MLisp-called function.  Instead of
+				   prompting for a string we evaluate it
+				   from the arg list */
+	register larg = arg;
+	register enum ArgStates largstate = ArgState;
+	register n;
+	ArgState = NoArg;
+	if (++LastArgUsed >= CurExec -> p_nargs) {
+	    error ("Too few arguments given to %s",
+			CurExec -> p_proc -> b_name);
+	    return 0;
+	}
+	n = NumericArg (LastArgUsed+1);
+	arg = larg;
+	ArgState = largstate;
+	return n;
+    }
+    return StrToInt (BrGetstr (1, "", &s)); /* gmcd */
+}
+#else pmax
+getnum (s)
+char *s;
+ {	/* gmcd */
+    register char  *p,
+                   *answer;
+    if (CurExec) {		/* we are being called from an
+				   MLisp-called function.  Instead of
+				   prompting for a string we evaluate it
+				   from the arg list */
+	register larg = arg;
+	register enum ArgStates largstate = ArgState;
+	register n;
+	ArgState = NoArg;
+	if (++LastArgUsed >= CurExec -> p_nargs) {
+	    error ("Too few arguments given to %s",
+			CurExec -> p_proc -> b_name);
+	    return 0;
+	}
+	n = NumericArg (LastArgUsed+1);
+	arg = larg;
+	ArgState = largstate;
+	return n;
+    }
+    return StrToInt (BrGetstr (1, "", s, 0, 0, 0, 0)); /* gmcd */
+}
+#endif pmax
+
+StrToInt (answer)
+char *answer; {
+    register char *p = answer;
+    register n = 0, neg = 0;
+    if (p == 0)
+	return 0;
+    while(isspace(*p)) p++;
+    if(*p>='A'){
+	register len = strlen(answer);
+	if(strncmp(answer,"on",len)==0
+		|| strncmp(answer,"true",len)==0) return 1;
+	if(strncmp(answer,"off",len)==0
+		|| strncmp(answer,"false",len)==0) return 0;
+    }
+    while (*p) {
+	if (isdigit (*p))
+	    n = n * 10 + *p - '0';
+	else
+	    if (*p == '-')
+		neg = !neg;
+	    else
+		if (!isspace (*p) && *p != '+') {
+		    error ("Malformed integer: \"%s\"", answer);
+		    return 0;
+		}
+	p++;
+    }
+    return neg ? -n : n;
+}
+
+/* Read a string from the terminal with prompt string s */
+/* VARARGS 1 */
+#ifndef pmax
+char   *getstr (s) {
+    return BrGetstr (0, "", &s);
+}
+#else
+char   *getstr (va_alist)
+va_dcl
+{
+    va_list ap;
+    char *fmt;
+    char *arg0;
+    char *arg1;
+    char *arg2;
+    char *arg3;
+    
+    va_start(ap);
+    fmt = va_arg(ap, char *);
+    arg0 = va_arg(ap, char *);
+    arg1 = va_arg(ap, char *);
+    arg2 = va_arg(ap, char *);
+    arg3 = va_arg(ap, char *);
+    return BrGetstr (0, "", fmt, arg0, arg1, arg2, arg3);
+    va_end(ap);
+}
+#endif
+
+/* Read a string from the terminal with prompt string s, whitespace
+   will terminate it. */
+
+/* VARARGS 1 */
+#ifndef pmax
+char   *getnbstr (s) {
+    return BrGetstr (1, "", &s);
+}
+#else  pmax
+char   *getnbstr(va_alist)
+va_dcl
+{
+    va_list ap;
+    char *fmt;
+    char *arg0;
+    char *arg1;
+    char *arg2;
+    char *arg3;
+    
+    va_start(ap);
+
+    fmt = va_arg(ap, char *);
+    arg0 = va_arg(ap, char *);
+    arg1 = va_arg(ap, char *);
+    arg2 = va_arg(ap, char *);
+    arg3 = va_arg(ap, char *);
+    return BrGetstr (0, "", fmt, arg0, arg1, arg2, arg3);
+    va_end(ap);
+}
+#endif pmax
+
+int AutoHelp;			/* true iff ambiguous or misspelled words
+				   should create a help window (DJH) */
+int RemoveHelpWindow;		/* true iff help window should go away  */
+				/* after reading word */
+
+/* Read a word from the terminal using prompt string s and
+   restricting the word to be one of those in the given table.
+   Returns the index of the word in the table.
+   Returns -1 on failure.
+   eg.	static char **words = { "command1", "command2", 0 };
+	switch(getword(words,"prompt")){ */
+/* VARARGS 2 */
+getword(table, s)
+register char **table;
+char *s; {
+    register char  *word;
+    register int    p;
+    int             bestp = -1,
+                    nfound;
+    register char *s1, *s2;
+    int ctr;
+    struct window  *killee = 0;
+    struct buffer  *old = bf_cur;
+    int     len;
+    char    prefix[200];
+    int     side, popup = PopUpWindows;
+
+    if (RemoveHelpWindow) PopUpWindows = 0;
+    prefix[0] = '\0';
+#ifdef	pmax
+    while (word = BrGetstr (1, prefix, s, 0, 0, 0, 0)) {
+#else
+    while (word = BrGetstr (1, prefix, &s)) {
+#endif	pmax
+	len = strlen (word);
+	prefix[0] = '\0';
+	nfound = 0;
+	if (word[len - 1] != '?')
+	    for (p = 0; s1 =table[p]; p++) {
+		s2 = word;
+		for (ctr = len; *s1++==*s2++ && --ctr>0;);
+		if (ctr <= 0) {
+		    nfound++;
+		    if (nfound == 1)
+			strcpy (prefix, table[p]);
+		    else {
+			register char  *pfx = prefix,
+			               *w = table[p];
+			while (*pfx++ == *w++);
+			*--pfx = '\0';
+		    }
+		    bestp = p;
+		    if (table[p][len] == 0) {/* exact match */
+			nfound = 1;
+			break;
+		    }
+		}
+	    }
+	if (nfound == 1)
+	    break;
+	bestp = -1;
+	if (nfound > 1 && strcmp (prefix, word) != 0)
+	    continue;
+	if (!interactive){
+	    bestp = -1;
+	    error ("\"%s\" %s", word,
+		nfound	? "is ambiguous."
+			: "doesn't make any sense to me.");
+	    break;
+	}
+	if (AutoHelp == 0 && (len <= 0 || word[len - 1] != '?')) {
+	    register int    maxlegal = 0;
+	    Ding ();		/* DJH -- Don't pop up help window */
+	    strcpy (prefix, word);
+	    if (nfound == 0) {
+		for (p = 0; table[p]; p++)
+		    while (strncmp (table[p], word, maxlegal + 1) == 0)
+			maxlegal++;
+		prefix[maxlegal] = 0;
+	    }
+	    continue;
+	}
+	SetBfn ("Help");
+	WindowOn (bf_cur);
+	EraseBf (bf_cur);
+	{
+	    register char  *msg;
+	    if (len > 0 && word[len - 1] == '?') {
+		len--;
+		strcpy (prefix, word);
+		prefix[len] = '\0';
+		msg = "Choose one of the following:\n";
+	    }
+	    else
+		if (nfound > 1)
+		    msg = "Ambiguous, choose one of the following:\n";
+		else {
+		    len = 0;
+		    msg = "Rubbish!  Please use one of the following words:\n";
+		};
+	    InsStr (msg);
+	}
+	killee = wn_cur;
+	side = 0;
+	for (p = 0; table[p]; p++)
+	    if (len <= 0 || strncmp (table[p], word, len) == 0) {
+		char    buf[100];
+		sprintfl (buf, sizeof buf, (side == 2 ? ((side = 0), "%s\n")
+			    : (side++, "%-25s")),
+			table[p]);
+		InsStr (buf);
+	    }
+	BeginningOfFile ();
+	bf_cur -> b_mode.md_NeedsCheckpointing = 0;
+	bf_modified = 0;
+    }
+    if (killee) {
+/*	DelWin (killee);	*/
+	WindowOn (old);
+    }
+    PopUpWindows = popup;
+    return bestp;
+}
+/* read a string from the terminal with prompt string s.
+   Whitespace will break iff breaksp is true.
+   The string "prefix" behaves as though the user had typed that first. */
+#ifdef	pmax
+char   *BrGetstr (breaksp, prefix, fmt, arg0, arg1, arg2, arg3)
+char   *prefix;
+char   *fmt;
+char   *arg0;
+char   *arg1;
+char   *arg2;
+char   *arg3;
+#else
+char   *BrGetstr (breaksp, prefix, s)
+char   *prefix,
+       ** s;
+#endif	pmax
+{
+    register    larg = arg;
+    register    enum ArgStates largstate = ArgState;
+    ArgState = NoArg;
+
+    if (CurExec) {		/* we are being called from an
+				   MLisp-called function.  Instead of
+				   prompting for a string we evaluate it
+				   from the arg list */
+	if (++LastArgUsed >= CurExec -> p_nargs) {
+	    error ("Too few arguments given to %s",
+		    CurExec -> p_proc -> b_name);
+	    return 0;
+	}
+	if (!StringArg (LastArgUsed + 1) || MLvalue -> exp_type != IsString) {
+	    error ("%s expected %s to return a value.",
+		    CurExec -> p_proc -> b_name,
+		    CurExec -> p_args[LastArgUsed] -> p_proc -> b_name);
+	    return 0;
+	}
+	arg = larg;
+	ArgState = largstate;
+	if (err)
+	    return 0;
+	if (MLvalue -> exp_v.v_string[MLvalue -> exp_int]) {
+	    static char holdit[200];
+	/* sigh...  yet another hideous atrocity! */
+	    register    len = MLvalue -> exp_int >= sizeof holdit
+	    ?           (sizeof holdit) - 1 : MLvalue -> exp_int;
+/*!*/	    cpyn (holdit, MLvalue -> exp_v.v_string, len);
+	    holdit[len] = 0;
+	    return holdit;
+	}
+	else
+	    return MLvalue -> exp_v.v_string;
+    }
+    {
+	register struct marker *olddot = NewMark ();
+	register char  *result = 0;
+	struct keymap  *outermap;
+	char   *OuterReset = ResetMiniBuf;
+	char    lbuf[BufferSize];
+	char    outer[BufferSize];
+	int     OuterLen,
+	        OuterDot;
+	int     WindowNum = -1;
+	if (interactive) {
+#ifdef	pmax
+	    sprintf(lbuf, fmt, arg0, arg1, arg2, arg3);
+#else
+	    sprintrmt(lbuf, s);
+#endif	pmax
+	}
+	if (interactive) {
+	    DumpMiniBuf++;
+	    ResetMiniBuf = MiniBuf = lbuf;
+	}
+	SetMark (olddot, bf_cur, dot);
+	{
+	    register struct window *w = windows;
+	    register int    i = 0;
+	    while (w -> w_next) {
+		if (w == wn_cur)
+		    WindowNum = i;
+		i++;
+		w = w -> w_next;
+	    }
+	    if (WindowNum == -1)
+		WindowNum = i;
+	    SetWin (w);
+	}
+	outermap = bf_mode.md_keys;
+	bf_mode.md_keys = bf_cur -> b_mode.md_keys =
+	    breaksp ? &MinibufLocalNSMap : &MinibufLocalMap;
+	NextGlobalKeymap = NextLocalKeymap = 0;
+	OuterLen = bf_s1 + bf_s2;
+	if (OuterLen > BufferSize)
+	    OuterLen = BufferSize;
+	OuterDot = dot;
+	for (dot = 1; dot <= OuterLen; dot++)
+	    outer[dot - 1] = CharAt (dot);
+	EraseBf (bf_cur);
+	InsStr (prefix);
+	MinibufDepth++;
+	RecursiveEdit ();
+	MinibufDepth--;
+	arg = larg;
+	ArgState = largstate;
+	SetBfp (minibuf);
+	bf_mode.md_keys = bf_cur -> b_mode.md_keys = outermap;
+	InsertAt (bf_s1 + bf_s2 + 1, 0);
+	SetDot (1);
+	if (OuterLen)
+	    InsCStr (outer, OuterLen);
+	SetDot (OuterDot);
+	result = err ? 0 : &CharAt (OuterLen + 1);
+	if (ResetMiniBuf = OuterReset)
+	    MiniBuf = ResetMiniBuf;
+	else
+	    if (MiniBuf == lbuf)
+		MiniBuf = "";
+	DelBack (bf_s1 + bf_s2 + 1, bf_s1 + bf_s2 - OuterLen);
+	{
+	    register struct window *w = windows;
+	    while (WindowNum && w -> w_next) {
+		WindowNum--;
+		w = w -> w_next;
+	    }
+	    if (WindowNum == 0 && w) {
+		SetWin (w);
+		dot = ToMark (olddot);
+	    }
+	    else
+		WindowOn (bf_cur);
+	}
+	dot = ToMark (olddot);
+	DestMark (olddot);
+	return result;
+    }
+}
+
+/* Get the name of a key.  Alas, you can't type a control-G,
+   since that aborts the key name read.  Returns -1 if aborted. */
+/* VARARGS 2 */
+#ifndef pmax
+char   *getkey (map, prompt)
+register struct keymap *map;
+char *prompt;
+#else pmax
+char   *getkey (map, va_alist)
+register struct keymap *map;
+va_dcl
+#endif pmax
+{
+    register    c;
+    register char  *p,
+                   *keys;
+    register    nkeys;
+    static char FakeIt[30];
+    static char lbuf[BufferSize];
+#ifdef pmax
+    va_list ap;
+#endif pmax
+    if (CurExec) {
+	register larg = arg;
+	register enum ArgStates largstate = ArgState;
+	ArgState = NoArg;
+	EvalArg (++LastArgUsed + 1);
+	arg = larg;
+	ArgState = largstate;
+	if (err)
+	    return 0;
+	if (MLvalue -> exp_type == IsString)
+	    return MLvalue -> exp_v.v_string;
+	if (MLvalue -> exp_int > 0177) {
+	    FakeIt[0] = MLvalue -> exp_int >= 0400 ? '\030' : '\033';
+	    FakeIt[1] = MLvalue -> exp_int & 0177;
+	    MLvalue -> exp_int = 2;
+	}
+	else {
+	    FakeIt[0] = MLvalue -> exp_int;
+	    MLvalue -> exp_int = 1;
+	}
+	MLvalue -> exp_type = IsString;
+	MLvalue -> exp_release = 0;
+	MLvalue -> exp_v.v_string = FakeIt;
+	return FakeIt;
+    }
+    if (interactive) {
+#ifndef pmax
+	sprintrmt (lbuf, &prompt);
+#else pmax
+	va_start(ap);
+	vsprintf (lbuf, va_arg(ap, char *), ap);
+	va_end(ap);
+#endif pmax
+	p = lbuf + strlen (lbuf);
+    }
+    else
+	p = lbuf;
+    keys = FakeIt;
+    nkeys = 0;
+    do {
+	*p = 0;
+	if (interactive)
+	    InMiniBuf++, MiniBuf = lbuf, DumpMiniBuf++;
+	if ((c = GetChar ()) == Ctl ('G')) {
+	    error ("Aborted.");
+	    InMiniBuf = 0;
+	    return 0;
+	}
+	if (++nkeys >= sizeof FakeIt) {
+	    error ("key sequence too long");
+	    return 0;
+	}
+	*keys++ = c;
+	if (map && map -> k_binding[c]
+		&& map -> k_binding[c] -> b_binding == KeyBound)
+	    map = map -> k_binding[c] -> b_bound.b_keymap;
+	else
+	    map = 0;
+	if (c == 033) {
+	    *p++ = 'E';
+	    *p++ = 'S';
+	    *p++ = 'C';
+	}
+	else
+	    if (c < 040) {
+		*p++ = '^';
+		*p++ = (c & 037) + 0100;
+	    }
+	    else
+		*p++ = c;
+	if (map)
+	    *p++ = '-';
+    } while (map);
+    *p++ = 0;
+    if (interactive)
+	MiniBuf = lbuf, DumpMiniBuf++;
+    else
+	lbuf[0] = '\0';
+    InMiniBuf = 0;
+    MLvalue -> exp_int = nkeys;
+    MLvalue -> exp_type = IsString;
+    MLvalue -> exp_release = 0;
+    MLvalue -> exp_v.v_string = FakeIt;
+    return FakeIt;
+}
+
+SelfInsertAndExit () {
+    SelfInsert (-1);
+    return -1;
+}
+
+ErrorAndExit () {
+    error ("Aborted.");
+    return -1;
+}
+
+InitMiniBuf() {
+    if (!Once)
+    {
+	AutoHelp = 1;
+	RemoveHelpWindow = 1;
+	DefIntVar ("stack-trace-on-error", &StackTraceOnError);
+	DefIntVar ("remove-help-window", &RemoveHelpWindow);
+	defproc (SelfInsertAndExit, "self-insert-and-exit");
+	setkey (MinibufLocalMap, Ctl('g'), ErrorAndExit, "error-and-exit");
+    }
+}
+@
+
+
+1.8
+log
+@Brian re-fixing MIPS changes necessitated by BSDI changes breaking
+Alpha. Ah, the joys of multiple versions.
+@
+text
+@d9 4
+d154 1
+a154 1
+	_strbuf._ptr = buf;
+a155 1
+        _strbuf._bf._base = _strbuf._p = (unsigned char *)buf;
+@
+
+
+1.7
+log
+@Get it working on alpha again after BSDI changes.
+@
+text
+@d9 3
+a135 3
+#if defined(i386)
+int sprintfl(buf, len, fmt, va_alist)
+#else  i386
+a136 1
+#endif i386
+a159 3
+#ifdef i386
+	return (int) buf;
+#else  i386
+a160 1
+#endif i386
+d165 1
+d170 1
+a170 1
+	return (int) buf;
+@
+
+
+1.6
+log
+@Changes for BSDI, by Brian. Whew. When I first put this VarArgs stuff
+in back in 1988 for the pmax, I didn't really understand it, and now
+I'm paying the price. Tons of cleanup of varargs routines.
+@
+text
+@d9 5
+d133 1
+a133 1
+#if defined(i386) || defined(__osf__)
+d145 7
+a151 2
+	va_start(ap);
+#ifdef i386
+d155 2
+a156 1
+
+d161 1
+d164 3
+a167 3
+#ifdef	__osf__
+	_strbuf._ptr = (unsigned char *)buf;
+#else   __osf__
+a168 1
+#endif  __osf
+d174 1
+a174 1
+	return buf;
+@
+
+
+1.5
+log
+@Export a variable used in filecomp.c
+@
+text
+@d8 4
+a11 1
+ * $Log:	minibuf.c,v $
+d57 1
+a57 1
+#ifndef	__osf__
+d74 3
+d78 1
+d86 10
+d100 1
+d103 1
+d106 1
+a106 1
+#else
+d127 43
+d182 3
+a184 1
+#else
+a185 1
+#endif	__osf__
+d188 1
+d193 3
+a195 1
+#endif pmax
+d214 2
+a215 1
+error (va_alist)
+d227 1
+a227 1
+    vsprintf(buf, va_arg(ap, char *), ap);
+d245 2
+a246 1
+message (va_alist)
+d253 1
+a253 1
+    vsprintf(buf, va_arg(ap, char *), ap);
+@
+
+
+1.4
+log
+@Bug fixes for MIPS, Alpha
+@
+text
+@d8 4
+a11 1
+ * $Log: minibuf.c,v $
+d337 1
+a337 1
+static int RemoveHelpWindow;	/* true iff help window should go away  */
+@
+
+
+1.3
+log
+@fixed a lot of VARARGS problems.
+@
+text
+@d8 4
+a11 1
+ * $Log:	minibuf.c,v $
+d28 1
+a28 1
+#define BufferSize 200
+d36 2
+a37 1
+/* sprintrmt(arg) effecttivly does an sprintf(buf,arg[0],arg[1],...); */
+d41 1
+a41 1
+	struct _iobuf _strbuf;
+d44 1
+a44 1
+	_strbuf._ptr = buf;
+d46 1
+a46 1
+	_doprnt(*arg, arg+1, &_strbuf);
+d49 1
+d51 1
+d58 1
+a58 1
+	struct _iobuf _strbuf;
+d72 1
+a72 1
+	struct _iobuf _strbuf;
+d84 3
+d94 1
+a94 1
+	struct _iobuf _strbuf;
+d110 1
+a110 1
+	struct _iobuf _strbuf;
+d115 5
+a119 1
+	_strbuf._ptr = buf;
+d157 2
+a158 1
+    sprintrmt (buf, ap);
+d182 2
+a183 1
+    sprintrmt (buf, ap);
+d216 2
+a217 2
+getnum (va_alist)
+va_dcl
+a218 1
+    va_list ap;
+d239 1
+a239 2
+    va_start(ap);
+    return StrToInt (BrGetstr (1, "", ap)); /* gmcd */
+d252 4
+a255 4
+	if(strcmpn(answer,"on",len)==0
+		|| strcmpn(answer,"true",len)==0) return 1;
+	if(strcmpn(answer,"off",len)==0
+		|| strcmpn(answer,"false",len)==0) return 0;
+d284 6
+d291 7
+a297 1
+    return BrGetstr (0, "", ap);
+d310 1
+a310 1
+char   *getnbstr (va_alist)
+d314 6
+d321 8
+a328 1
+    return BrGetstr (1, "", ap);
+a343 1
+#ifndef pmax
+a346 6
+#else pmax
+getword(table, va_alist)
+register char **table;
+va_dcl
+{
+#endif pmax
+a357 3
+#ifdef pmax
+    va_list ap;
+#endif pmax
+d361 3
+a363 1
+#ifndef pmax
+d365 1
+a365 4
+#else pmax
+    va_start(ap);
+    while (word = BrGetstr (1, prefix, ap)) {
+#endif pmax
+d408 1
+a408 1
+		    while (strcmpn (table[p], word, maxlegal + 1) == 0)
+d437 1
+a437 1
+	    if (len <= 0 || strcmpn (table[p], word, len) == 0) {
+a454 1
+
+d458 9
+d470 1
+d475 1
+a516 2
+	if (interactive)
+	    sprintrmt (lbuf, s);
+d518 7
+d644 2
+a645 1
+	sprintrmt (lbuf, ap);
+@
+
+
+1.2
+log
+@
+@
+text
+@d9 3
+d20 3
+d49 1
+d61 7
+d69 10
+d82 1
+d95 8
+d104 11
+d117 1
+d131 5
+d137 13
+d152 1
+d160 5
+d166 7
+d175 1
+d200 29
+d262 1
+d266 9
+d278 1
+d280 1
+d284 9
+d306 1
+d310 6
+d327 3
+d333 1
+d335 4
+d553 1
+d557 5
+d569 3
+d598 1
+d600 4
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d8 4
+a11 1
+ * $Log$
+d73 2
+a74 1
+error (m) {
+d89 2
+a90 1
+message (m) {
+d99 2
+a100 1
+getnum (s) {
+d121 1
+a121 1
+    return StrToInt (BrGetstr (1, "", &s));
+@

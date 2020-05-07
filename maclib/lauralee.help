@@ -1,0 +1,24 @@
+Lauralee -- Emacs-based mail system (Eric Roberts and Mark Manasse)
+            Port to X and WRL/WSL emacs by Mark Manasse and Hania Gajewska
+
+Select a message and/or folder by pointing to it with the mouse and clicking
+the left button.  Execute an operation by pointing to one of the menu items
+on the Emacs dividing bars and again clicking the left button.  The first
+menu bar contains folder commands; thus, "new" means "create a new folder".
+The second menu bar contains message commands; thus, "delete" marks the
+current message for deletion at the time of the next "commit" command.
+
+Click "help" to erase this message.
+Click CTRL-help to display a list of shortcuts.
+----------
+Shortcuts:
+
+    double click on folder    select and open folder
+    double click on message   select and show message
+    drag message to folder    file message in folder
+    CTRL-click on message     toggle delete/undelete
+    CTRL-open                 regenerate header information
+    CTRL-file                 link message into folder (i.e., leave copy here)
+    CTRL-print                print on selected printer
+    CTRL-reply                reply to all recipients
+    CTRL-compose              reuse last or cancelled draft

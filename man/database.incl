@@ -1,0 +1,19 @@
+@begin(CommandList)
+@ComPara(name="extend-database-search-list", key="[unbound]")
+(extend-database-search-list dbname filename) adds the given data base file
+to the data base search list (dbname).  If the database is already in the
+search list then it is left, otherwise the new database is added at the
+beginning of the list of databases.
+
+@ComPara(name="fetch-database-entry", key="[unbound]")
+(fetch-database-entry dbname key) takes the entry in the data base
+corresponding to the given key and inserts it into the current buffer.
+
+@ComPara(name="list-databases", key="[unbound]")
+(list-databases) lists all data base search lists.
+
+@ComPara(name="put-database-entry", key="[unbound]")
+(put-database-entry dbname key) takes the current buffer and stores it into
+the named database under the given key.
+
+@end(CommandList)

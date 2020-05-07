@@ -1,0 +1,57 @@
+Installing Emacs is fairly simple:
+
+1. The first step is to edit the site configuation file, config.h. The
+comments in the file should tell you all that you need to know. The makefile
+will need to be edited to change the installation directories and the
+libraries to be used.
+
+2. Compile Emacs and it's associated support programs (makemail,
+getmail, updatemail, loadst, dbadd, dblist and dbprint) by invoking
+"make" in the source directory.  There should be no error messages of
+any sort.
+
+3. Move the compiled version of Emacs (the file temacs) to wherever
+users will be accessing it from: probably /bin or /usr/bin.
+
+4. You may want to put the database manipulation programs (see the
+documentation on them in dbadd.1) into the same directory as Emacs.
+The programs are dbadd, dblist, dbprint and dbcreate.
+
+5. Move all of the MLisp files from the maclib directory to the
+directory named by PATH_LOADSEARCH in your edited configuation file.
+It is essential that these files be accessible since several standard
+Emacs commands have been moved from C to MLisp.
+
+6. Some of the MLisp files will need to be edited to reflect the
+directories in which databases are to be kept.  The files to edit
+are:
+
+	DesWord.ml	implements the describe-word-in-buffer
+			command (^X^D)
+	rmail.ml	the mail system
+	info.ml		an ITS-like information system
+
+7. Some of the MLisp files will need to be edited to reflect the
+directories in which the executable assist programs are kept:
+
+	rmail.ml	invokes collectmail and makemail
+	time.ml		invokes loadst
+
+8. DesWord and info use the "quickinfo" and "info" databases.
+To create them chdir to the directory in which you want them to
+reside (it should correspond to the changes you made in 6.  Then
+create them with dbcreate ("dbcreate quickinfo; dbcreate info")
+and execute the command files quickinfo.sh and info.sh to add
+entries to the databases.
+
+___________________________________________________________________
+
+Please remember that Emacs is copyrighted.  You are free to use Emacs
+internally, but you are not free to redistribute it.  If someone is
+interested in obtaining a copy of Emacs, refer them to me:
+
+			James Gosling		[Gosling@CMUA]
+			Computer Science
+			Carnegie-Mellon University
+			Pittsburgh PA
+			15213

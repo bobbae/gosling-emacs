@@ -1,0 +1,6 @@
+alias pwd 'echo $cwd'
+set nonomatch
+alias setprompt ''
+if ( -e ~/.cshinit) source ~/.cshinit
+set prompt = "\
+~GlOb#PrOmPt~"

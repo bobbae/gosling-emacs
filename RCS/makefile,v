@@ -1,0 +1,56 @@
+head	1.2;
+access;
+symbols;
+locks; strict;
+comment	@# @;
+
+
+1.2
+date	99.11.01.23.43.22;	author reid;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	93.08.11.18.26.58;	author reid;	state Exp;
+branches;
+next	;
+
+
+desc
+@Brian
+@
+
+
+1.2
+log
+@*** empty log message ***
+@
+text
+@all:
+	make -f makefile.`uname -m` all
+
+install:
+	make -f makefile.`uname -m` install
+
+clean:
+	make -f makefile.`uname -m` clean
+
+
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d2 1
+a2 1
+	make -f makefile.`/bin/machine` all
+d5 1
+a5 1
+	make -f makefile.`/bin/machine` install
+d8 1
+a8 1
+	make -f makefile.`/bin/machine` clean
+@

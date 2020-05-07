@@ -1,0 +1,22 @@
+-*-Text-*-
+
+File: (LOCAL)	Node: Top	Up: (DIR)Top
+
+This file contains the directory node for local documentation files. Please
+add to it. 
+
+* Menu:
+
+* Graphics: (GRAPHICS)Top
+			Access to the documentation about existing
+			graphics software.
+;* Biblio:   (BIBLIO)Top
+                        BIBLIO  is  a library for use within EMACS for
+                        creating  and maintaining SCRIBE bibliographic
+                        (.BIB) files.
+
+;* SPELL: (SPELL)*
+			This is a program to check and correct spelling.
+
+
+

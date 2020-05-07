@@ -1,0 +1,2829 @@
+Message 1 of 2 (3 if getting mpx->pty changes)
+
+I have a diff listing with the following changes to Goslings emacs.  If you
+would like a copy of this, send me a note.  Those of you who have already
+requested them don't need to send another.
+
+1. "Preloading" of macro packages.  This is accomplished by running the
+   newly compiled bare emacs, loading any macros you desire, and then
+   executing the (new) function dump-emacs which creates an a.out file
+   with the macros already loaded.  If you have a large .emacs_pro this
+   is a major win.  Works on 4.1 and 4.1a systems (for sure, untested on
+   others).
+
+2. Pty support for 4.1a systems (which don't have MPX files).  I originally
+   got this from someone at Berkeley, but I have fixed a multitude of bugs.
+
+3. A fix for the truncation of strings with null bytes in them.
+
+4. For those of you still using MPX files, a way to keep your terminal from
+   appearing to be idle for hours.  Also a fix which allows you to run
+   the csh (but no job control) in your window.  This has appeared before.
+
+5. A pair of functions which allow you to "pretype" some input for the user,
+   then prompt for more.  We use it for file-name recognition and expansion.
+   One allows blanks, the other doesn't.
+
+6. "on-exit" procedure for subprocesses.  Called whenever the subprocess
+   state changes.
+
+7. await-process-input lets you wait for input from subprocesses without
+   waiting for input from the terminal.
+
+8. A fix so the minibuffer stays visible until you type input from the
+   keyboard.  This was a real loss when you had an active process.
+
+9. Fixes to TrmTERM to do better cost evaluation.
+
+10. A few other cute functions:
+	a. (procedure-type "procedure-name") gives you type of the
+	   procedure as a string, e.g. "wired", "mlisp", etc.
+	b. variable-apropos.  Sort of a kludge, but it works.
+	c. set-auto-fill-hook returns the name of its previous binding
+	   so you can restore it.
+	d. Half Baked mode restored.  Gosling removed it in his latest
+	   release, for reasons unknown to me.  Lets you interrupt
+	   those infinitely looping mlisp functions and kill them dead.
+	   Also has interruptable searches.
+
+Those of you who want the PTY stuff should indicate so in your letter, since
+that code is BIG.  Essentially, I need to send out all of mchan.c for that
+one.
+
+=Spencer
+
+The preloading requires the following general changes:
+1. All macro definition, etc. must be only done ONCE.  Thus these are 
+   enclosed in if(!Once) statements.  The diff listings here are diff -b, 
+   so they don't show all the newly indented statements.
+2. Static variables which need to RE-initialized to 0 each time the
+   program starts are flagged by calling the FluidStatic routine.  They
+   will be set back to 0 before dumping the new a.out.
+3. Info cannot be preloaded - it opens the database when loaded and this
+   information is not reset.
+
+=Spencer
+================================================================
+RCS file: RCS/TrmTERM.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029062	Thu Feb  3 07:10:31 1983
+--- /tmp/,RCSt2029062	Thu Feb  3 07:10:36 1983
+***************
+*** 14,15
+  #include <stdio.h>
+  #include "config.h"
+
+--- 14,16 -----
+  #include <stdio.h>
++ #include <ctype.h>
+  #include "config.h"
+***************
+*** 189,190
+      char   *fill = combuf;
+      static  inited;
+
+--- 190,192 -----
+      char   *fill = combuf;
++     int	    mf, ov;			/* for timing calculations */
+      static  inited;
+***************
+*** 191,192
+      if (!inited)
+  	if (tgetent (tbuf, getenv ("TERM")) <= 0) {
+
+--- 193,196 -----
+      if (!inited)
++     {
++ 	FluidStatic(&inited, sizeof(inited));	/* reset on restart */
+  	if (tgetent (tbuf, getenv ("TERM")) <= 0) {
+***************
+*** 198,199
+  	}
+      inited = 1;
+
+--- 202,204 -----
+  	}
++     }
+      inited = 1;
+***************
+*** 226,228
+  	NLstr = "\n";		/*   use default if none specified */
+!     MetaFlag = tgetflag ("MT");
+      BEGINstr = tgetstr ("ti", &fill);
+
+--- 231,233 -----
+  	NLstr = "\n";		/*   use default if none specified */
+!     MetaFlag = tgetflag ("MT") || tgetflag("km");
+      BEGINstr = tgetstr ("ti", &fill);
+***************
+*** 230,233
+      PC = 0;
+!     BaudFactor = 1 / (1 - (.45 +.3 * BaudRate / 9600.))
+! 	* (BaudRate / 10000.);
+      if (CursStr == 0 || UP == 0 || ELstr == 0 || ESstr == 0) {
+
+--- 235,237 -----
+      PC = 0;
+!     BaudFactor = BaudRate / 10000.;
+      if (CursStr == 0 || UP == 0 || ELstr == 0 || ESstr == 0) {
+***************
+*** 240,243
+      }
+!     tt.t_ILmf = BaudFactor * 0.75;
+!     tt.t_ILov = ILstr ? 2 : MissingFeature;
+      if (!ILstr)
+
+--- 244,251 -----
+      }
+!     if (ILstr)
+! 	costof(ILstr, &ov, &mf);
+!     else
+! 	ov = mf = MissingFeature;
+!     tt.t_ILmf = mf;
+!     tt.t_ILov = ov;
+      if (!ILstr)
+***************
+*** 247,252
+      if (ICstr && DCstr) {
+! 	tt.t_ICov = 1;
+! 	tt.t_ICov = 4;
+! 	tt.t_DCmf = 2;
+! 	tt.t_DCov = 0;
+      }
+
+--- 255,267 -----
+      if (ICstr && DCstr) {
+! 	costof(ICstr, &ov, &mf);
+! 	tt.t_ICov = ov + (ICPstr ? mf : 0);
+! 	if (ICPstr)
+! 	    costof(ICPstr, &ov, &mf);
+! 	else
+! 	    ov = mf + 1;
+! 	tt.t_ICmf = ov;
+! 
+! 	tt.t_DCov = tt.t_ICov;
+! 	costof(DCstr, &ov, &mf);
+! 	tt.t_DCmf = ov + mf;
+      }
+***************
+*** 253,254
+      else {
+  	tt.t_ICov = MissingFeature;
+
+--- 268,270 -----
+      else {
++ 	tt.t_ICmf = MissingFeature;
+  	tt.t_ICov = MissingFeature;
+***************
+*** 254,256
+  	tt.t_ICov = MissingFeature;
+- 	tt.t_ICov = MissingFeature;
+  	tt.t_DCmf = MissingFeature;
+
+--- 270,271 -----
+  	tt.t_ICov = MissingFeature;
+  	tt.t_DCmf = MissingFeature;
+***************
+*** 263,264
+  
+  
+
+--- 278,286 -----
+  
++ static
++ costof (str, ov, mf)
++ char *str;
++ int *ov, *mf;
++ {
++     register char *cp;
++     int pad;
+  
+***************
+*** 264,265
+  
+  static
+
+--- 286,301 -----
+  
++     *ov = *mf = pad = 0;
++     for (cp = str; isdigit(*cp); cp++)
++ 	pad = pad * 10 + (*cp - '0');
++     if (*cp == '*')
++     {
++ 	*mf = pad * BaudFactor;
++ 	cp++;
++     }
++     else
++ 	*ov = pad;
++     *ov += strlen(cp);
++     return *ov;
++ }
++ 
+  static
+===================================================================
+RCS file: RCS/abbrev.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029062	Thu Feb  3 07:10:51 1983
+--- /tmp/,RCSt2029062	Thu Feb  3 07:10:56 1983
+***************
+*** 313,314
+  InitAbbrev () {
+      defproc (DefineGlobalAbbrev, "define-global-abbrev");
+
+--- 313,316 -----
+  InitAbbrev () {
++     if (!Once)
++     {
+  	defproc (DefineGlobalAbbrev, "define-global-abbrev");
+***************
+*** 326,327
+      NumberOfAbbrevTables = 1;
+  }
+
+--- 328,330 -----
+  	NumberOfAbbrevTables = 1;
++     }
+  }
+===================================================================
+RCS file: RCS/abspath.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029062	Thu Feb  3 07:11:05 1983
+--- /tmp/,RCSt2029062	Thu Feb  3 07:11:11 1983
+***************
+*** 287,288
+      }
+      defproc (WorkingDirectory, "working-directory");
+
+--- 287,290 -----
+      }
++     if (!Once)
++     {
+  	defproc (WorkingDirectory, "working-directory");
+***************
+*** 288,289
+      defproc (WorkingDirectory, "working-directory");
+  }
+
+--- 290,292 -----
+  	defproc (WorkingDirectory, "working-directory");
++     }
+  }
+===================================================================
+RCS file: RCS/arithmetic.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029062	Thu Feb  3 07:11:20 1983
+--- /tmp/,RCSt2029062	Thu Feb  3 07:11:24 1983
+***************
+*** 378,379
+  InitArith () {
+      defproc (plus, "+");
+
+--- 378,381 -----
+  InitArith () {
++     if (!Once)
++     {
+  	defproc (plus, "+");
+***************
+*** 395,396
+      defproc (not, "!");
+  }
+
+--- 397,399 -----
+  	defproc (not, "!");
++     }
+  }
+===================================================================
+RCS file: RCS/buffer.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029062	Thu Feb  3 07:11:37 1983
+--- /tmp/,RCSt2029062	Thu Feb  3 07:11:41 1983
+***************
+*** 6,7
+  
+  #include "buffer.h"
+
+--- 6,8 -----
+  
++ #include "config.h"
+  #include "buffer.h"
+***************
+*** 11,12
+  #include "keyboard.h"
+  #include <sys/mx.h>
+
+--- 12,14 -----
+  #include "keyboard.h"
++ #ifdef	MPXcode
+  #include <sys/mx.h>
+***************
+*** 12,13
+  #include <sys/mx.h>
+  #include <sgtty.h>
+
+--- 14,16 -----
+  #include <sys/mx.h>
++ #endif
+  #include <sgtty.h>
+***************
+*** 47,49
+      RecordInsert (dot, n);
+!     while (*s && --n >= 0) {
+  	if (bf_gap <= 0) {
+
+--- 50,52 -----
+      RecordInsert (dot, n);
+!     while (/**s &&*/ --n >= 0) {
+  	if (bf_gap <= 0) {
+***************
+*** 260,262
+      b -> b_mode.md_TabSize = DefaultTabSize;
+!     b -> b_mode.md_NeedsCheckpointing = 1;
+      buffers = b;
+
+--- 263,265 -----
+      b -> b_mode.md_TabSize = DefaultTabSize;
+!     b -> b_mode.md_NeedsCheckpointing = -1; /* Scratch buffers not saved */
+      buffers = b;
+***************
+*** 394,395
+  Initbf () {			/* (DJH) allocate buffer list */
+      DefaultTabSize = 8;
+
+--- 397,400 -----
+  Initbf () {			/* (DJH) allocate buffer list */
++     if (! Once)
++     {
+  	DefaultTabSize = 8;
+***************
+*** 430,431
+      DefStrVar ("prefix-string", bf_mode.md_PrefixString);
+  }
+
+--- 435,437 -----
+  	DefStrVar ("prefix-string", bf_mode.md_PrefixString);
++     }
+  }
+===================================================================
+RCS file: RCS/casefiddle.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029062	Thu Feb  3 07:11:51 1983
+--- /tmp/,RCSt2029062	Thu Feb  3 07:11:54 1983
+***************
+*** 112,113
+  InitCase () {
+      setkey (ESCmap, ('^'), CaseWordInvert, "case-word-invert");
+
+--- 112,115 -----
+  InitCase () {
++     if (!Once)
++     {
+  	setkey (ESCmap, ('^'), CaseWordInvert, "case-word-invert");
+***************
+*** 120,121
+      defproc (CaseRegionCapitalize, "case-region-capitalize");
+  }
+
+--- 122,124 -----
+  	defproc (CaseRegionCapitalize, "case-region-capitalize");
++     }
+  }
+===================================================================
+RCS file: RCS/config.h,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029062	Thu Feb  3 07:12:04 1983
+--- /tmp/,RCSt2029062	Thu Feb  3 07:12:07 1983
+***************
+*** 23,24
+  				   a few days old. */
+  #define subprocesses		/* Define this symbol if you want the
+
+--- 24,26 -----
+  				   a few days old. */
++ /* #define	MPXcode			/* Define this if the system has MPX */
+  #define subprocesses		/* Define this symbol if you want the
+***************
+*** 38,39
+  				   profile instead */
+  #define OneEmacsPerTty		/* Define this symbol if only one Emacs is
+
+--- 40,43 -----
+  				   profile instead */
++ #ifdef MPXcode
++ #ifdef subprocesses
+  #define OneEmacsPerTty		/* Define this symbol if only one Emacs is
+***************
+*** 61
+  				   "from" field of outgoing mail. */
+
+--- 67,73 -----
+  				   "from" field of outgoing mail. */
++ #define HalfBaked		/* define this if half baked IO is to be
++ 				   done, it's advantage is that it allows the
++ 				   ^G command to interrupt Emacs.  But it has
++ 				   a major bug: all pending output gets lost
++ 				   so Emacs will lose track of what the
++ 				   display looks like. */
+================================================================
+RCS file: RCS/dbmanager.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029150	Thu Feb  3 07:13:55 1983
+--- /tmp/,RCSt2029150	Thu Feb  3 07:13:58 1983
+***************
+*** 192,193
+  InitDb () {
+      defproc (ExtendDatabaseSearchList, "extend-database-search-list");
+
+--- 192,195 -----
+  InitDb () {
++     if (!Once)
++     {
+  	defproc (ExtendDatabaseSearchList, "extend-database-search-list");
+***************
+*** 196,197
+      defproc (ListDatabases, "list-databases");
+  }
+
+--- 198,200 -----
+  	defproc (ListDatabases, "list-databases");
++     }
+  }
+===================================================================
+there is a fix here for a potentially infinite loop when you are using
+the MPX file and give a negative number to sit-for.  This fixes it.
+RCS file: RCS/display.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029150	Thu Feb  3 07:14:06 1983
+--- /tmp/,RCSt2029150	Thu Feb  3 07:14:11 1983
+***************
+*** 758,760
+      num_chars = getnum (": sit-for ") * CharsPerInputCheck;
+!     while (num_chars-- && !InputPending){
+  #ifdef FIONREAD
+
+--- 758,760 -----
+      num_chars = getnum (": sit-for ") * CharsPerInputCheck;
+!     while (num_chars-- > 0 && !InputPending){
+  #ifdef FIONREAD
+***************
+*** 778,780
+  	0, 50, 75, 110, 135, 150, 200, 300, 600, 1200,
+! 	1800, 2400, 4800, 9600
+      };
+
+--- 778,780 -----
+  	0, 50, 75, 110, 135, 150, 200, 300, 600, 1200,
+! 	1800, 2400, 4800, 9600, 19200, 300
+      };
+***************
+*** 785,786
+  
+      RDdebug = 0;		/* line redraw debug switch */
+
+--- 785,787 -----
+  
++     FluidStatic(&BeenHere, sizeof(BeenHere));
+      RDdebug = 0;		/* line redraw debug switch */
+***************
+*** 814,815
+  	extern  TrmVT100 ();
+  	static struct termtype  termtable[] = {
+
+--- 815,818 -----
+  	extern  TrmVT100 ();
++ 	extern  TrmT1061 ();
++ 	extern	TrmGigi ();
+  	static struct termtype  termtable[] = {
+***************
+*** 823,824
+  	    "concept", 7, TrmC100,
+  	    "perq", 4, TrmC100,
+
+--- 826,829 -----
+  	    "concept", 7, TrmC100,
++ 	    "GG", 99, TrmGigi,
++ 	    "Gigi", 4, TrmGigi,
+  	    "perq", 4, TrmC100,
+***************
+*** 826,827
+  	    "minibee", 99, TrmMiniB,
+  	    "tek4025", 99, TrmTEK4025,
+
+--- 831,833 -----
+  	    "minibee", 99, TrmMiniB,
++ 	    "t10", 3, TrmT1061,
+  	    "tek4025", 99, TrmTEK4025,
+***************
+*** 832,834
+  	if (tname == 0)
+! 	    tname = "concept";
+  	gtty (fileno (stdin), &sg);
+
+--- 838,840 -----
+  	if (tname == 0)
+! 	    tname = "t10";
+  	gtty (fileno (stdin), &sg);
+***************
+*** 845,846
+  	    TrmTERM (tname);
+  	defproc (SitFor, "sit-for");
+
+--- 851,854 -----
+  	    TrmTERM (tname);
++ 	if (! Once)
++ 	{
+  	    defproc (SitFor, "sit-for");
+***************
+*** 847,848
+  	DefIntVar ("visible-bell", &VisibleBell);
+      }
+
+--- 855,857 -----
+  	    DefIntVar ("visible-bell", &VisibleBell);
++ 	    DefIntVar ("mode-line-highlight", &tt.t_modeline);
+  	}
+***************
+*** 848,849
+      }
+      (*tt.t_init) (baud_rate);
+
+--- 857,859 -----
+  	}
++     }
+      (*tt.t_init) (baud_rate);
+***************
+*** 917
+  } */
+
+--- 927,929 -----
+  } */
++ 
++ NoOperation() {}
+===================================================================
+Mostly changes here are for HalfBaked (but are neatly enclosed in #ifdefs)
+RCS file: RCS/dsp.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029150	Thu Feb  3 07:14:22 1983
+--- /tmp/,RCSt2029150	Thu Feb  3 07:14:25 1983
+***************
+*** 14,15
+  struct sgttyb old;		/* The initial tty mode bits */
+  
+
+--- 14,20 -----
+  struct sgttyb old;		/* The initial tty mode bits */
++ #ifdef HalfBaked
++ static struct tchars OldTchars;
++ static struct ltchars OldLtchars;
++ static int OldLmode;
++ #endif
+  
+***************
+*** 20,21
+      sg = old;
+      sg.sg_flags = (sg.sg_flags & ~(ECHO | CRMOD | XTABS)) | RAW;
+
+--- 25,52 -----
+      sg = old;
++ #ifdef HalfBaked
++     ioctl (0, TIOCGETC, &OldTchars);
++     ioctl (0, TIOCGLTC, &OldLtchars);
++     ioctl (0, TIOCLGET, &OldLmode);
++     sg.sg_flags = (sg.sg_flags & ~(ECHO | CRMOD | XTABS | ANYP)) | CBREAK;
++     {   struct tchars tchars;
++ 	struct ltchars ltchars;
++ 	int lmode;
++ 	tchars.t_intrc = Ctl ('G');
++ 	tchars.t_quitc = -1;
++ 	tchars.t_startc = -1;
++ 	tchars.t_stopc = -1;
++ 	tchars.t_eofc = -1;
++ 	tchars.t_brkc = -1;
++ 	ltchars.t_suspc = -1;
++ 	ltchars.t_dsuspc = -1;
++ 	ltchars.t_rprntc = -1;
++ 	ltchars.t_flushc = -1;
++ 	ltchars.t_werasc = -1;
++ 	ltchars.t_lnextc = -1;
++ 	lmode = OldLmode | LLITOUT;
++ 	ioctl (0, TIOCSETC, &tchars);
++ 	ioctl (0, TIOCSLTC, &ltchars);
++ 	ioctl (0, TIOCLSET, &lmode);
++     }
++ #else
+      sg.sg_flags = (sg.sg_flags & ~(ECHO | CRMOD | XTABS)) | RAW;
+***************
+*** 21,22
+      sg.sg_flags = (sg.sg_flags & ~(ECHO | CRMOD | XTABS)) | RAW;
+      stty (0, &sg);
+
+--- 52,54 -----
+      sg.sg_flags = (sg.sg_flags & ~(ECHO | CRMOD | XTABS)) | RAW;
++ #endif
+      stty (0, &sg);
+***************
+*** 24,25
+      setbuf (stdout, _sobuf);
+      term_init ();
+
+--- 56,58 -----
+      setbuf (stdout, _sobuf);
++     MetaFlag = 0;
+      term_init ();
+***************
+*** 34,35
+      fflush (stdout);
+      stty (0, &old);
+
+--- 67,73 -----
+      fflush (stdout);
++ #ifdef HalfBaked
++     ioctl (0, TIOCSETC, &OldTchars);
++     ioctl (0, TIOCSLTC, &OldLtchars);
++     ioctl (0, TIOCLSET, &OldLmode);
++ #endif
+      stty (0, &old);
+===================================================================
+RCS file: RCS/emacs.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029150	Thu Feb  3 07:14:32 1983
+--- /tmp/,RCSt2029150	Thu Feb  3 07:14:35 1983
+***************
+*** 20,21
+  #include <errno.h>
+  #include <sys/mx.h>
+
+--- 20,22 -----
+  #include <errno.h>
++ #ifdef	MPXcode
+  #include <sys/mx.h>
+***************
+*** 21,22
+  #include <sys/mx.h>
+  #include "mchan.h"
+
+--- 22,24 -----
+  #include <sys/mx.h>
++ #endif
+  #include "mchan.h"
+***************
+*** 47,48
+      int     ExclusiveMode;
+      for (p = tt; *p;)
+
+--- 49,52 -----
+      int     ExclusiveMode;
++     strcpy(ttydev, tt);			/* SWT - to fix idle problem */
++ 					/* we need tty name */
+      for (p = tt; *p;)
+***************
+*** 159,160
+  
+  /* Define an autoloaded function, bound to the indicated key */
+
+--- 163,220 -----
+  
++ /* When Emacs is saved, there will be certain static variables which
++  * need to be set to 0 so that they will be properly re-initialized
++  * when Emacs is restarted.  The subroutine FluidStatic will add these
++  * statics to a list, and they will be set to 0 when Emacs is dumped.
++  */
++  struct init_static {
++ 	struct init_static * next;
++ 	char * where;
++ 	int size;
++ };
++ static struct init_static * StaticList;
++ 
++ FluidStatic(var, size)
++ char * var;
++ {
++     register struct init_static * s;
++ 
++     for (s = StaticList; s; s = s -> next)
++ 	if (s -> where == var)
++ 	    return;
++     s = (struct init_static * ) malloc(sizeof(struct init_static));
++     s -> next = StaticList;		/* link into list */
++     StaticList = s;
++     s -> where = var;
++     s -> size = size;
++ }
++ 
++ /* Dump the current Emacs using unexec() */
++ DumpEmacs()
++ {
++     register char *new_name = getstr(": dump-emacs (into) ");
++     register char *a_name;
++     register struct init_static *s;
++     register char * cp;
++ 
++     if (new_name == NULL)
++ 	return 0;
++     new_name = (char *) strcpy(malloc(strlen(new_name)+1), new_name);
++ 
++     a_name = getstr(": dump-emacs (into) %s (from) ", new_name);
++     if (a_name == NULL)
++ 	return 0;
++     if (*a_name == 0)
++ 	a_name = NULL;
++ 
++     for (s = StaticList; s; s = s -> next)	/* zap the statics */
++ 	for (cp = s -> where; cp < s -> where + s -> size; cp++)
++ 	    *cp = 0;
++     RstDsp();				/* going to exit anyway */
++     fflush(stdout);
++     setbuf(stdout, 0);
++     unexec( new_name, a_name, 0, 0 );
++     free(new_name);
++     return -1;
++ }
++ 
+  /* Define an autoloaded function, bound to the indicated key */
+***************
+*** 179,180
+  				   to execute after doing the -l load */
+      register char   c,
+
+--- 239,241 -----
+  				   to execute after doing the -l load */
++     int    qflag = 0;		/* if set don't execute .emacs_pro */
+      register char   c,
+***************
+*** 186,187
+  #endif
+      Gargc = argc;
+
+--- 247,249 -----
+  #endif
++     TouchedCommandArgs = 0;		/* on restart */
+      Gargc = argc;
+***************
+*** 191,192
+      signal (SIGTERM, AbnormalTerminate);
+      NewNames = MacBodies;
+
+--- 253,256 -----
+      signal (SIGTERM, AbnormalTerminate);
++     if (!Once)
++     {
+  	NewNames = MacBodies;
+***************
+*** 196,197
+      NextInitVarDesc = VarDesc;
+  
+
+--- 260,262 -----
+  	NextInitVarDesc = VarDesc;
++     }
+  
+***************
+*** 205,206
+   *	-s		enables the share-emacs facility
+   */
+
+--- 270,273 -----
+   *	-s		enables the share-emacs facility
++  * 
++  *	-q		Don't load .emacs_pro (quick startup)
+   */
+***************
+*** 227,228
+  		    break;
+  		case 's': 
+
+--- 294,296 -----
+  		    break;
++ #ifdef	MPXcode
+  		case 's': 
+***************
+*** 230,231
+  		    break;
+  		default: 
+
+--- 298,303 -----
+  		    break;
++ #endif
++ 		case 'q':
++ 		    qflag++;
++ 		    break;
+  		default: 
+***************
+*** 236,237
+  	    }
+      defproc (Argc, "argc");
+
+--- 308,311 -----
+  	    }
++     if (! Once)
++     {
+  	defproc (Argc, "argc");
+***************
+*** 238,239
+      defproc (Argv, "argv");
+      DefIntVar ("silently-kill-processes", &SilentlyKillProcesses);
+
+--- 312,314 -----
+  	defproc (Argv, "argv");
++ 	defproc (DumpEmacs, "dump-emacs");
+  	DefIntVar ("silently-kill-processes", &SilentlyKillProcesses);
+***************
+*** 239,240
+      DefIntVar ("silently-kill-processes", &SilentlyKillProcesses);
+      InitMpx ();			/* Initialize the multiplex i/o stuff */
+
+--- 314,316 -----
+  	DefIntVar ("silently-kill-processes", &SilentlyKillProcesses);
++     }
+      InitMpx ();			/* Initialize the multiplex i/o stuff */
+***************
+*** 275,276
+     and cannot be done in the relevant InitXX routine */
+      DefAutoload ("shell", "process", 0, -1);
+
+--- 351,354 -----
+     and cannot be done in the relevant InitXX routine */
++     if (! Once)
++     {
+  	DefAutoload ("shell", "process", 0, -1);
+***************
+*** 315,316
+      NVars = NextInitVarName - VarNames;
+      {
+
+--- 393,397 -----
+  	NVars = NextInitVarName - VarNames;
++     }
++     Once = 1;				/* past one-time init code */
++     if (!qflag)
+      {
+===================================================================
+Changes here and in buffer.c so that Scratch buffers aren't checkpointed 
+unless specifically asked for.
+RCS file: RCS/fileio.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029150	Thu Feb  3 07:14:46 1983
+--- /tmp/,RCSt2029150	Thu Feb  3 07:14:49 1983
+***************
+*** 527,529
+      for (b = buffers; b; b = b -> b_next)
+! 	if (b -> b_mode.md_NeedsCheckpointing
+  		&& b -> b_checkpointed < (modcnt = b == bf_cur ? bf_modified
+
+--- 527,530 -----
+      for (b = buffers; b; b = b -> b_next)
+! 	if ((b -> b_mode.md_NeedsCheckpointing > 0 ||
+! 		(b->b_kind == FileBuffer && b->b_mode.md_NeedsCheckpointing))
+  		&& b -> b_checkpointed < (modcnt = b == bf_cur ? bf_modified
+***************
+*** 550,551
+      umask(Umask = umask(077));
+      DefIntVar ("backup-before-writing", &BackupBeforeWriting);
+
+--- 551,554 -----
+      umask(Umask = umask(077));
++     if (!Once)
++     {
+  	DefIntVar ("backup-before-writing", &BackupBeforeWriting);
+***************
+*** 570,571
+      defproc (AutoExecute, "auto-execute");
+  }
+
+--- 573,575 -----
+  	defproc (AutoExecute, "auto-execute");
++     }
+  }
+===================================================================
+Changes here include HalfBaked and a fix to ^X( saving.
+RCS file: RCS/keyboard.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029150	Thu Feb  3 07:14:59 1983
+--- /tmp/,RCSt2029150	Thu Feb  3 07:15:03 1983
+***************
+*** 12,13
+  #ifdef subprocesses
+  #include <sys/mx.h>
+
+--- 12,14 -----
+  #ifdef	subprocesses
++ #ifdef MPXcode
+  #include <sys/mx.h>
+***************
+*** 13,14
+  #include <sys/mx.h>
+  #include "mchan.h"
+
+--- 14,16 -----
+  #include <sys/mx.h>
++ #endif
+  #include "mchan.h"
+***************
+*** 16,17
+  
+  /* A keyboard called procedure returns:
+
+--- 18,36 -----
+  
++ #ifdef HalfBaked
++ #include <signal.h>
++ #include <setjmp.h>
++ static Reading;			/* True iff currently trying to read a
++ 				   character from the tty */
++ static InterruptChar;		/* Set true when an interrupt character is
++ 				   recieved */
++ static jmp_buf ReaderEnv;	/* a buffer for the only non-local goto in
++ 				   Emacs.  It has to be done this way because
++ 				   with the new signal system, system calls
++ 				   get continued, and if we get a SIGINT when
++ 				   reading from the tty we want to fake the
++ 				   receipt of a ^G, so we have to break out
++ 				   of the read. */
++ #endif
++ 
++ 
+  /* A keyboard called procedure returns:
+***************
+*** 25,26
+  				   time that GetChar is called */
+  static CheckpointFrequency;	/* The number of keystrokes between
+
+--- 44,48 -----
+  				   time that GetChar is called */
++ static MetaChar;		/* The meta-ized character between when */
++ 				/* the meta-char is typed and it is read */
++ 				/* (The escape is returned, this is saved) */
+  static CheckpointFrequency;	/* The number of keystrokes between
+***************
+*** 118,120
+  	PushedBack = -1;
+! 	goto HaveCharacter;
+      }
+
+--- 140,142 -----
+  	PushedBack = -1;
+! 	return c;
+      }
+***************
+*** 120,121
+      }
+      if (MemPtr) {
+
+--- 142,147 -----
+      }
++     if((c = MetaChar) >= 0) {
++ 	MetaChar = -1;
++ 	return c;
++     }
+      if (MemPtr) {
+***************
+*** 121,123
+      if (MemPtr) {
+! 	if (err) {
+  	    MemPtr = 0;
+
+--- 147,149 -----
+      if (MemPtr) {
+! 	if(err) {
+  	    MemPtr = 0;
+***************
+*** 126,130
+  	c = (unsigned char) *MemPtr++;
+! 	if (c) {
+! 	    c &= 0177;
+! 	    goto HaveCharacter;
+  	}
+
+--- 152,157 -----
+  	c = (unsigned char) *MemPtr++;
+! 	if (c)
+! 	{
+! 	    c &= 0177;			/* fix up ^@-s */
+! 	    return c;
+  	}
+***************
+*** 133,135
+      }
+!     if (err && InputFD!=stdin) {
+  	return -1;
+
+--- 160,162 -----
+      }
+!     if(err && InputFD!=stdin){
+  	return -1;
+***************
+*** 148,149
+  		    && Keystrokes>CheckpointFrequency) {
+  		CheckpointEverything ();
+
+--- 175,179 -----
+  		    && Keystrokes>CheckpointFrequency) {
++ 		long now[2];		/* to fix idle problem */
++ 		now[0] = now[1] = time(0);
++ 		utime(ttydev, now);	/* fix idle prob - set access time */
+  		CheckpointEverything ();
+***************
+*** 154,155
+      Keystrokes++;
+  #ifdef subprocesses
+
+--- 184,188 -----
+      Keystrokes++;
++ #ifdef HalfBaked
++     if (setjmp (ReaderEnv) || ((Reading=1),InterruptChar)) {
++ 	c = Ctl ('G');
+  #ifdef subprocesses
+***************
+*** 155,157
+  #ifdef subprocesses
+!     if(InputFD == stdin) {
+  	c = mpx_getc(mpxin);
+
+--- 188,199 -----
+  #ifdef subprocesses
+! 	if (InputFD == stdin) mpxin->ch_count = 0;
+! #else
+! 	if (InputFD == stdin) stdin->_cnt = 0;
+! #endif
+! 	InputPending = 0;
+! 	InterruptChar = 0;
+!     } else
+! #endif
+! #ifdef subprocesses
+!     if(InputFD == stdin){
+  	c = mpx_getc(mpxin);
+***************
+*** 169,170
+  #endif
+      if(c<0) return -1;
+
+--- 211,217 -----
+  #endif
++     if (MiniBuf && (!InMiniBuf || *MiniBuf) && !ResetMiniBuf)
++ 	MiniBuf = *MiniBuf ? "" : 0;	/* Only reset minibuf w/ kbd input */
++ #ifdef HalfBaked
++     Reading = 0;
++ #endif
+      if(c<0) return -1;
+***************
+*** 170,172
+      if(c<0) return -1;
+! HaveCharacter:
+      if (Remembering) {
+
+--- 217,243 -----
+      if(c<0) return -1;
+! 
+!     if (MetaFlag)
+!     {
+! 	c &= 0377;
+! 	if (c & 0200)			/* if real meta char */
+! 	{
+! 	    MetaChar = c & 0177;	/* remember the character */
+! 	    c = '\033';			/* and return an ESC */
+! 	}				/* this is a kludge, but it''s the */
+!     }					/* easiest thing to do */
+!     else
+! 	c &= 0177;
+! 
+!     Remember(c);
+!     if (MetaFlag && MetaChar >= 0)	/* handle meta''s right */
+! 	Remember(MetaChar);
+! 
+!     return c;
+! }
+! 
+! /* Remember for kbd macros */
+! static
+! Remember(c)
+! unsigned char c;
+! {
+      if (Remembering) {
+***************
+*** 172,174
+      if (Remembering) {
+! 	KeyMem[MemUsed++] = c | 0200;
+  	if (MemUsed >= MemLen) {
+
+--- 243,248 -----
+      if (Remembering) {
+! 	if (c)
+! 	    KeyMem[MemUsed++] = c;
+! 	else
+! 	    KeyMem[MemUsed++] = 128;	/* handle ^@ right */
+  	if (MemUsed >= MemLen) {
+***************
+*** 178,184
+      }
+-     if (MetaFlag && (c&0200)) {
+- 	PushedBack = c & 0177;
+- 	c = 033;
+-     }
+-     return c & 0177;
+  }
+
+--- 252,253 -----
+      }
+  }
+***************
+*** 274,275
+  
+  InitKey () {
+
+--- 343,362 -----
+  
++ /* This routine is called at interrupt level on receipt of an INT signal.  It
++    cleanly terminates whatever is going on at the moment. */
++ 
++ #ifdef HalfBaked
++ 
++ static InterruptKey () {
++     if (!Reading)
++ 	IllegalOperation ();
++     InterruptChar++;
++     if (Reading) {
++ 	Reading = 0;
++ 	sigrelse (SIGINT);
++ 	longjmp (ReaderEnv, 1);
++     }
++ }
++ 
++ #endif
++ 
+  InitKey () {
+***************
+*** 276,277
+      PushedBack = -1;
+      setkey (CtlXmap, ('e'), ExecuteKeyboardMacro, "execute-keyboard-macro");
+
+--- 363,370 -----
+      PushedBack = -1;
++     MetaChar = -1;
++ #ifdef HalfBaked
++     sigset (SIGINT, InterruptKey);
++ #endif
++     if (!Once)
++     {
+  	setkey (CtlXmap, ('e'), ExecuteKeyboardMacro, "execute-keyboard-macro");
+***************
+*** 284,285
+      DefIntVar ("this-command", &ThisCommand);
+  }
+
+--- 377,379 -----
+  	DefIntVar ("this-command", &ThisCommand);
++     }
+  }
+================================================================
+RCS file: RCS/keyboard.h,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029214	Thu Feb  3 07:15:44 1983
+--- /tmp/,RCSt2029214	Thu Feb  3 07:15:47 1983
+***************
+*** 103,104
+  
+  #ifndef FILE
+
+--- 103,107 -----
+  
++ char ttydev[30];		/* name of tty dev, set in main */
++ 				/* used to fix idle time problem */
++ 
+  #ifndef FILE
+***************
+*** 191
+  				   seen. */
+
+--- 194,196 -----
+  				   seen. */
++ int Once;			/* Flag for things that should only be
++ 				   done the first time Emacs is invoked */
+===================================================================
+RCS file: RCS/lispfuncs.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029214	Thu Feb  3 07:15:54 1983
+--- /tmp/,RCSt2029214	Thu Feb  3 07:15:58 1983
+***************
+*** 129,131
+  	p = (char *) malloc (n + 1);
+! 	strcpyn (p, MLvalue -> exp_v.v_string + pos - 1, n);
+  	p[n] = '\0';
+
+--- 129,131 -----
+  	p = (char *) malloc (n + 1);
+! /*!*/	cpyn (p, MLvalue -> exp_v.v_string + pos - 1, n);
+  	p[n] = '\0';
+***************
+*** 181,182
+  static
+  GetTtyCommand () {		/* get a command name from the tty */
+
+--- 181,192 -----
+  static
++ GetTtyInput () {		/* get input from the tty with a prefix */
++     return GetTtySomething ("input");
++ }
++ 
++ static
++ GetTtyNoBlanksInput () {	/* Ditto, but don't allow blanks */
++     return GetTtySomething ("no-blanks-input");
++ }
++ 
++ static
+  GetTtyCommand () {		/* get a command name from the tty */
+***************
+*** 194,195
+  
+  /* Helper function for get-tty-string, get-tty-command, and
+
+--- 204,209 -----
+  
++ GetTtyKey () {				/* get a key string from the tty */
++     return GetTtySomething ("key");
++ }
++ 
+  /* Helper function for get-tty-string, get-tty-command, and
+***************
+*** 206,208
+  	register i;
+! 	char prompt[500];
+  	strcpyn (prompt, prompt1, sizeof prompt);
+
+--- 220,222 -----
+  	register i;
+! 	char prompt[500], init[500];
+  	strcpyn (prompt, prompt1, sizeof prompt);
+***************
+*** 209,210
+  	prompt [sizeof prompt - 1] = 0;
+  	InputFD = stdin;
+
+--- 223,234 -----
+  	prompt [sizeof prompt - 1] = 0;
++ 	if (*something == 'i' || *something == 'n')
++ 	{
++ 	    prompt1 = getstr(": get-tty-%s (prompt) %s (init) ",
++ 				something, prompt);
++ 	    if (! prompt1 )
++ 		goto out;
++ 
++ 	    strcpyn(init, prompt1, sizeof init);
++ 	    init[sizeof init - 1] = 0;
++ 	}
+  	InputFD = stdin;
+***************
+*** 229,230
+  		break;
+  	}
+
+--- 253,266 -----
+  		break;
++ 	    case 'k':		/* get-tty-key */
++ 		answer = getkey (CurrentGlobalMap, prompt);
++ 		break;
++ 	    case 'i':		/* get-tty-input */
++ 	    case 'n':		/* get-tty-no-blanks-input */
++ 	    {
++ 		char *fmt[2];
++ 
++ 		fmt[0] = "%s";
++ 		fmt[1] = prompt;
++ 		answer = BrGetstr (*something=='n', init, fmt);
++ 		break;
+  	    }
+***************
+*** 230,231
+  	}
+  	InputFD = LInputFD;
+
+--- 266,268 -----
+  	    }
++ 	}
+  	InputFD = LInputFD;
+***************
+*** 242,243
+      }
+      return 0;
+
+--- 279,281 -----
+      }
++ out:
+      return 0;
+***************
+*** 253,255
+  /*  MemPtr = 0; */
+-     MLvalue -> exp_type = IsInteger;
+      MLvalue -> exp_int = GetChar ();
+
+--- 291,292 -----
+  /*  MemPtr = 0; */
+      MLvalue -> exp_int = GetChar ();
+***************
+*** 255,256
+      MLvalue -> exp_int = GetChar ();
+      InputFD = LInputFD;
+
+--- 292,294 -----
+      MLvalue -> exp_int = GetChar ();
++     MLvalue -> exp_type = IsInteger;
+      InputFD = LInputFD;
+***************
+*** 271,273
+  		p = (char *) realloc (p, space += MLvalue -> exp_int + 100);
+! 	    strcpyn (p + size, MLvalue -> exp_v.v_string, MLvalue -> exp_int);
+  	    size += MLvalue -> exp_int;
+
+--- 309,311 -----
+  		p = (char *) realloc (p, space += MLvalue -> exp_int + 100);
+! /*!*/	    cpyn (p + size, MLvalue -> exp_v.v_string, MLvalue -> exp_int);
+  	    size += MLvalue -> exp_int;
+***************
+*** 304,306
+  	(char *) malloc ((MLvalue -> exp_int = right - left) + 1);
+!     strcpyn (MLvalue -> exp_v.v_string, &CharAt (left), MLvalue -> exp_int);
+      MLvalue -> exp_v.v_string[MLvalue -> exp_int] = '\0';
+
+--- 342,344 -----
+  	(char *) malloc ((MLvalue -> exp_int = right - left) + 1);
+! /*!*/    cpyn (MLvalue -> exp_v.v_string, &CharAt (left), MLvalue -> exp_int);
+      MLvalue -> exp_v.v_string[MLvalue -> exp_int] = '\0';
+***************
+*** 351,352
+  InitFunc () {
+      defproc (ExpandFileName, "expand-file-name");
+
+--- 389,392 -----
+  InitFunc () {
++     if (!Once)
++     {
+  	defproc (ExpandFileName, "expand-file-name");
+***************
+*** 368,369
+      defproc (GetTtyBuffer, "get-tty-buffer");
+      defproc (DotVal, "dot");
+
+--- 408,412 -----
+  	defproc (GetTtyBuffer, "get-tty-buffer");
++ 	defproc (GetTtyKey, "get-tty-key");
++ 	defproc (GetTtyInput, "get-tty-input");
++ 	defproc (GetTtyNoBlanksInput, "get-tty-no-blanks-input");
+  	defproc (DotVal, "dot");
+***************
+*** 393,394
+      defproc (Interactive, "interactive");
+      pw = (struct passwd *) getpwuid (getuid ());
+
+--- 436,440 -----
+  	defproc (Interactive, "interactive");
++ 	defproc (ReturnSystemName, "system-name");
++ 	defproc (EmacsVersion, "emacs-version");
++     }
+      pw = (struct passwd *) getpwuid (getuid ());
+***************
+*** 396,399
+      strcpyn (FullName, MailOriginator, sizeof FullName);
+-     defproc (ReturnSystemName, "system-name");
+-     defproc (EmacsVersion, "emacs-version");
+      {
+
+--- 442,443 -----
+      strcpyn (FullName, MailOriginator, sizeof FullName);
+      {
+===================================================================
+Changes here to keep better track of mbox, and reorder the output a little.
+RCS file: RCS/loadst.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029214	Thu Feb  3 07:16:07 1983
+--- /tmp/,RCSt2029214	Thu Feb  3 07:16:10 1983
+***************
+*** 6,7
+   *	05/05/82 jag -- add disk drive utilization statistics.
+   */
+
+--- 6,8 -----
+   *	05/05/82 jag -- add disk drive utilization statistics.
++  *	08/09/82 swt -- change order of fields
+   */
+***************
+*** 35,37
+  int nflag;			/* -n flag -- no newline */
+! int uflag;			/* -u flag -- user current user ID rather
+  				   than login user ID */
+
+--- 36,38 -----
+  int nflag;			/* -n flag -- no newline */
+! int uflag;			/* -u flag -- use current user ID rather
+  				   than login user ID */
+***************
+*** 46,47
+      struct stat st;
+      if ((kmem = open ("/dev/kmem", 0)) < 0) {
+
+--- 47,52 -----
+      struct stat st;
++     long mail_mtime, mail_atime;
++     long time0;
++ 
++     time(&time0);
+      if ((kmem = open ("/dev/kmem", 0)) < 0) {
+***************
+*** 66,67
+  		: (char *) getenv("USER"));
+  
+
+--- 71,79 -----
+  		  : (char *) getenv("USER"));
++     if (stat(mail, &st) >= 0)
++     {
++ 	mail_mtime = st.st_mtime;
++ 	mail_atime = st.st_atime;
++     }
++     else
++ 	mail_mtime = 0;
+  
+***************
+*** 75,83
+  	read (kmem, avenrun, sizeof (avenrun));
+! 	printf ("%d:%02d%s %.2f%s",
+! 	    nowt -> tm_hour == 0 ? 12
+! 	    : nowt ->tm_hour>12 ? nowt->tm_hour-12 : nowt->tm_hour,
+! 	    nowt -> tm_min,
+! 	    nowt -> tm_hour>=12 ? "pm" : "am",
+! 	    avenrun[0],
+! 	    stat (mail, &st)>=0 && st.st_size ? " Mail" : "");
+  	lseek(kmem, (long)nl[X_CPTIME].n_value, 0);
+
+--- 87,95 -----
+  	read (kmem, avenrun, sizeof (avenrun));
+! 	if (stat (mail, &st) < 0)
+! 	    st.st_size = 0;
+! 	else if (st.st_atime > mail_atime)
+! 	{
+! 	    mail_atime = st.st_atime;
+! 	    mail_mtime = st.st_mtime;
+! 	}
+  	lseek(kmem, (long)nl[X_CPTIME].n_value, 0);
+***************
+*** 104,106
+  		if (s.xfer[i]>max) max = s.xfer[i];
+! 	    printf ("[%d]", (int) (max/etime + 0.5));
+  	}
+
+--- 116,126 -----
+  		if (s.xfer[i]>max) max = s.xfer[i];
+! 	    printf ("%d:%02d%s %.2f[%d]%s",
+! 		nowt -> tm_hour == 0 ? 12
+! 		: nowt ->tm_hour>12 ? nowt->tm_hour-12 : nowt->tm_hour,
+! 		nowt -> tm_min,
+! 		nowt -> tm_hour>=12 ? "pm" : "am",
+! 		avenrun[0],
+! 		(int) (max/etime + 0.5),
+! 		st.st_size && st.st_mtime >= st.st_atime &&
+! 		st.st_mtime > time0 ? " Mail" : "");
+  	}
+===================================================================
+RCS file: RCS/macros.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029214	Thu Feb  3 07:16:16 1983
+--- /tmp/,RCSt2029214	Thu Feb  3 07:16:19 1983
+***************
+*** 191,192
+      register struct BoundName *p;
+      defproc (EditMacro, "edit-macro");
+
+--- 191,194 -----
+      register struct BoundName *p;
++     if (! Once)
++     {
+  	defproc (EditMacro, "edit-macro");
+***************
+*** 202,203
+      SortMacros ();
+  }
+
+--- 204,206 -----
+  	SortMacros ();
++     }
+  }
+===================================================================
+RCS file: RCS/mchan.h,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029214	Thu Feb  3 07:16:26 1983
+--- /tmp/,RCSt2029214	Thu Feb  3 07:16:29 1983
+***************
+*** 16,17
+  
+  /* mpx_msg is the structure of a mpx control message read from the mpx file
+
+--- 16,18 -----
+  
++ #ifdef	MPXcode
+  /* mpx_msg is the structure of a mpx control message read from the mpx file
+***************
+*** 22,23
+      };
+  
+
+--- 23,29 -----
+      };
++ #else
++ struct wh {
++     short index, count, ccount; char *data;
++ };
++ #endif
+  
+***************
+*** 33,34
+       struct BoundName *ch_proc;	/* Procedure which gets called on output */
+      };       
+
+--- 39,41 -----
+       struct BoundName *ch_proc;	/* Procedure which gets called on output */
++      struct BoundName *ch_exit;	/* Procedure which is called on exit */
+      };       
+===================================================================
+RCS file: RCS/metacoms.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029214	Thu Feb  3 07:16:35 1983
+--- /tmp/,RCSt2029214	Thu Feb  3 07:16:37 1983
+***************
+*** 24,26
+  YankBuffer () {
+!     register char *fn = getnbstr("Insert contents of buffer: ");
+      if(fn==0) return 0;
+
+--- 24,27 -----
+  YankBuffer () {
+!     register int i = getword(BufNames, "Insert contents of buffer: ");
+!     register char *fn = i < 0 ? 0 : BufNames[i];
+      if(fn==0) return 0;
+***************
+*** 164,165
+  InitMeta () {
+  	setkey (ESCmap, (Ctl ('W')), DeleteRegionToBuffer, "delete-region-to-buffer");
+
+--- 165,168 -----
+  InitMeta () {
++     if (!Once)
++     {
+  	setkey (ESCmap, (Ctl ('W')), DeleteRegionToBuffer, "delete-region-to-buffer");
+***************
+*** 175,176
+  	setkey (ESCmap, ('d'), DeleteNextWord, "delete-next-word");
+  }
+
+--- 178,180 -----
+  	setkey (ESCmap, ('d'), DeleteNextWord, "delete-next-word");
++     }
+  }
+===================================================================
+RCS file: RCS/minibuf.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029214	Thu Feb  3 07:16:45 1983
+--- /tmp/,RCSt2029214	Thu Feb  3 07:16:48 1983
+***************
+*** 307,309
+  	    ?           (sizeof holdit) - 1 : MLvalue -> exp_int;
+! 	    strcpyn (holdit, MLvalue -> exp_v.v_string, len);
+  	    holdit[len] = 0;
+
+--- 307,309 -----
+  	    ?           (sizeof holdit) - 1 : MLvalue -> exp_int;
+! /*!*/	    cpyn (holdit, MLvalue -> exp_v.v_string, len);
+  	    holdit[len] = 0;
+***************
+*** 497,498
+  InitMiniBuf() {
+      AutoHelp = 1;
+
+--- 497,500 -----
+  InitMiniBuf() {
++     if (!Once)
++     {
+  	AutoHelp = 1;
+***************
+*** 501,502
+      setkey (MinibufLocalMap, Ctl('g'), ErrorAndExit, "error-and-exit");
+  }
+
+--- 503,505 -----
+  	setkey (MinibufLocalMap, Ctl('g'), ErrorAndExit, "error-and-exit");
++     }
+  }
+===================================================================
+RCS file: RCS/mlisp.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029214	Thu Feb  3 07:17:01 1983
+--- /tmp/,RCSt2029214	Thu Feb  3 07:17:06 1983
+***************
+*** 11,12
+   */
+  
+
+--- 11,13 -----
+   */
++ /* Modified SWT Mon Jul 12 1982 Add variable-apropos */
+  
+***************
+*** 338,340
+      register char  *s = getstr (": execute-mlisp-line ");
+!     int rv;
+      if (s) {
+
+--- 339,341 -----
+      register char  *s = getstr (": execute-mlisp-line ");
+!     int rv = 0;
+      if (s) {
+***************
+*** 670,671
+      if (path == 0) {
+  	path = (char *) getenv ("EPATH");
+
+--- 671,673 -----
+      if (path == 0) {
++ 	FluidStatic(&path, sizeof(path));
+  	path = (char *) getenv ("EPATH");
+***************
+*** 876,878
+  		    (char *) malloc (MLvalue -> exp_int + 1);
+! 		strcpyn (MLvalue -> exp_v.v_string,
+  			b -> b_exp -> exp_v.v_string, MLvalue -> exp_int + 1);
+
+--- 878,880 -----
+  		    (char *) malloc (MLvalue -> exp_int + 1);
+! /*!*/		cpyn (MLvalue -> exp_v.v_string,
+  			b -> b_exp -> exp_v.v_string, MLvalue -> exp_int + 1);
+***************
+*** 999,1001
+  	    if (arg==0 || StringArg (arg)) {
+! 		strcpyn (b -> b_exp -> exp_v.v_string,
+  			arg ? MLvalue -> exp_v.v_string : svalue,
+
+--- 1001,1003 -----
+  	    if (arg==0 || StringArg (arg)) {
+! /*!*/		cpyn (b -> b_exp -> exp_v.v_string,
+  			arg ? MLvalue -> exp_v.v_string : svalue,
+***************
+*** 1009,1011
+      else {
+! 	if (b -> BufferSpecific
+  		&& (b = ResolveBufferSpecificAssignment (b, v)) == 0)
+
+--- 1011,1013 -----
+      else {
+! 	if (b -> BufferSpecific && !SettingDefault
+  		&& (b = ResolveBufferSpecificAssignment (b, v)) == 0)
+***************
+*** 1099,1100
+  
+  static ProvidePrefixArgument () {
+
+--- 1101,1195 -----
+  
++ VariableApropos () {
++     register char  *keyword = getnbstr (": variable-apropos keyword: ");
++     register struct buffer *old = bf_cur;
++     register    i;
++     char    buf[4000];
++     if (keyword == 0)
++ 	return 0;
++     SetBfn ("Help");
++     WindowOn (bf_cur);
++     WidenRegion ();
++     EraseBf (bf_cur);
++     for (i = 0; VarNames[i]; i++)
++ 	if (sindex (VarNames[i], keyword)) {
++ 	    register struct Binding *b;
++ 	    register struct buffer *help = bf_cur;
++ 
++ 	    SetBfp (old);
++ 	    b = VarDesc[i] -> v_binding;
++ 	    if (b -> BufferSpecific)
++ 		b = ResolveBufferSpecific (b);
++ 	    if (b == 0)
++ 		sprintfl (buf, sizeof buf,"%-34s [Unbound]\n",
++ 			VarNames[i]);
++ 	    else
++ 	    {
++ 		switch (b -> b_exp -> exp_type) {
++ 		    case IsInteger: 
++ 			sprintfl (buf, sizeof buf, "%-34s = %d\n",
++ 				VarNames[i],
++ 				b -> IsSystem ? *(int *) b -> b_exp -> exp_v.v_string
++ 				: b -> b_exp -> exp_int);
++ 			break;
++ 		    case IsString: 
++ 		    {
++ 			char str[50];
++ 			register char *cp, *sp;
++ 
++ 			for (cp = b -> b_exp -> exp_v.v_string, sp = str;
++ 				*cp && sp < str + 40; cp++, sp++)
++ 			{
++ 			    if (CtlArrow && (*cp < 040 || *cp == 0177))
++ 			    {
++ 				*sp++ = '^';
++ 				*sp = *cp ^ 0100;
++ 			    }
++ 			    else if (*cp < 040 || *cp == 0177)
++ 			    {
++ 				*sp++ = '\\';
++ 				*sp++ = ((((int) *cp) & 0300) >> 6) + '0';
++ 				*sp++ = ((*cp & 070) >> 3) + '0';
++ 				*sp = (*cp & 07) + '0';
++ 			    }
++ 			    else
++ 				*sp = *cp;
++ 			}
++ 			*sp = 0;
++ 			sprintfl (buf, sizeof buf, "%-34s = \"%.40s\"\n",
++ 				VarNames[i], str);
++ 			break;
++ 		    }
++ 		    case IsMarker: {
++ 			    register struct marker *m = b -> b_exp -> exp_v.v_marker;
++ 			    if (m) {
++ 				sprintfl (buf, sizeof buf,
++ 					"%-34s = Marker (\"%s\", %d)\n",
++ 					VarNames[i],
++ 					m -> m_buf -> b_name,
++ 					ToMark (m));
++ 				SetBfp (help);
++ 				break;
++ 			    }
++ 			}
++ 		    default: 
++ 			sprintfl (buf, sizeof buf,
++ 				"%s = Something very odd!\n", VarNames[i]);
++ 		}
++ 	    }
++ 	    SetBfp (help);
++ 	    InsStr (buf);
++ 	}
++     if (bf_cur -> b_mark == 0)
++ 	bf_cur -> b_mark = NewMark ();
++     SetMark (bf_cur -> b_mark, bf_cur, dot);
++     SetDot (1);
++     bf_cur -> b_mode.md_NeedsCheckpointing = 0;
++     FilterThrough (ToMark(bf_cur -> b_mark) - dot, shell(), "-cf", "sort", 0);
++     SetDot (1);
++     bf_modified = 0;
++     SetBfp (old);
++     WindowOn (bf_cur);
++     return 0;
++ }
++ 
+  static ProvidePrefixArgument () {
+***************
+*** 1167,1168
+  				   (DJH) */
+      DefIntVar ("track-eol-on-^N-^P", &TrackEol);
+
+--- 1262,1265 -----
+  				   (DJH) */
++     if (!Once)
++     {
+  	DefIntVar ("track-eol-on-^N-^P", &TrackEol);
+***************
+*** 1180,1181
+      defproc (Print, "print");
+      defproc (DeclareGlobal, "declare-global");
+
+--- 1277,1279 -----
+  	defproc (Print, "print");
++ 	defproc (VariableApropos, "variable-apropos");
+  	defproc (DeclareGlobal, "declare-global");
+***************
+*** 1203,1204
+      defproc (ErrorMessage, "error-message");
+  }
+
+--- 1301,1303 -----
+  	defproc (ErrorMessage, "error-message");
++     }
+  }
+================================================================
+RCS file: RCS/options.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029295	Thu Feb  3 07:17:30 1983
+--- /tmp/,RCSt2029295	Thu Feb  3 07:17:34 1983
+***************
+*** 51,52
+      if (path == 0) {
+  	path = (char *) getenv ("EPATH");
+
+--- 51,53 -----
+      if (path == 0) {
++ 	FluidStatic(&path, sizeof(path));
+  	path = (char *) getenv ("EPATH");
+***************
+*** 142,143
+  static
+  LocalBindingOf () {
+
+--- 143,181 -----
+  static
++ ProcedureType ()
++ {
++     register int i = getword (MacNames, ": procedure-type (of) ");
++     static char yetAnotherHack[100];
++ 
++     if (i <= 0)
++ 	return 0;
++     switch (MacBodies[i] -> b_binding)
++     {
++     case ProcBound:
++ 	strcpy(yetAnotherHack, "wired");
++ 	break;
++     case MacroBound:
++ 	strcpy(yetAnotherHack, "macro");
++ 	break;
++     case MLispBound:
++ 	strcpy(yetAnotherHack, "mlisp");
++ 	break;
++     case AutoLoadBound:
++ 	sprintf(yetAnotherHack, "autoload: %s", MacBodies[i]->b_bound.b_body);
++ 	break;
++     case KeyBound:
++ 	sprintf(yetAnotherHack, "keymap");
++ 	break;
++     default:
++ 	strcpy(yetAnotherHack, "Bizarre!");
++ 	break;
++     }
++ 
++     MLvalue -> exp_type = IsString;
++     MLvalue -> exp_v.v_string = yetAnotherHack;
++     MLvalue -> exp_release = 0;
++     MLvalue -> exp_int = strlen(yetAnotherHack);
++     return 0;
++ }
++ 
++ static
+  LocalBindingOf () {
+***************
+*** 617,618
+  InitOpt () {
+      setkey (ESCmap, ('x'), ExecuteExtendedCommand, "execute-extended-command");
+
+--- 655,658 -----
+  InitOpt () {
++     if (!Once)
++     {
+  	setkey (ESCmap, ('x'), ExecuteExtendedCommand, "execute-extended-command");
+***************
+*** 622,623
+      defproc (GlobalBindingOf, "global-binding-of");
+      defproc (ChangeDirectory, "change-directory");
+
+--- 662,664 -----
+  	defproc (GlobalBindingOf, "global-binding-of");
++ 	defproc (ProcedureType, "procedure-type");
+  	defproc (ChangeDirectory, "change-directory");
+***************
+*** 639,640
+  		&ExecutionRoot.PrefixArgumentProvided);
+  };
+
+--- 680,682 -----
+  		    &ExecutionRoot.PrefixArgumentProvided);
++     }
+  };
+===================================================================
+RCS file: RCS/search.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029295	Thu Feb  3 07:17:48 1983
+--- /tmp/,RCSt2029295	Thu Feb  3 07:17:52 1983
+***************
+*** 281,283
+  				    prefix = 0;
+! 				    if (action != do_nothing && isalpha (lc)) {
+  					if (islower (lc)
+
+--- 281,284 -----
+  				    prefix = 0;
+! 				    if (action != do_nothing && isascii (lc)
+! 					&& isalpha (lc)) {
+  					if (islower (lc)
+***************
+*** 294,296
+  					BegOfWord = 1;
+! 				    if (lc == '\\' && RE)
+  					prefix = 0200;
+
+--- 295,297 -----
+  					BegOfWord = 1;
+! 				    if (lc == '\\' && RE)	/* ') */
+  					prefix = 0200;
+***************
+*** 427,428
+      register int    i;
+      for (i = 0;
+
+--- 428,431 -----
+      register int    i;
++     if (!Once)
++     {
+  	for (i = 0;
+***************
+*** 455,456
+      DefIntVar ("replace-case", &ReplaceCase);
+  }
+
+--- 458,460 -----
+  	DefIntVar ("replace-case", &ReplaceCase);
++     }
+  }
+***************
+*** 658,660
+  	    p1 += incr;
+! 	} while (p1 <= NumCharacters && p1 >= FirstCharacter);
+  	return (-1);
+
+--- 662,664 -----
+  	    p1 += incr;
+! 	} while (p1 <= NumCharacters && p1 >= FirstCharacter && !err);
+  	return (-1);
+***************
+*** 670,672
+  	    p1 += incr;
+! 	} while (p1 <= NumCharacters && p1 >= FirstCharacter);
+      return (-1);
+
+--- 674,676 -----
+  	    p1 += incr;
+! 	} while (p1 <= NumCharacters && p1 >= FirstCharacter && !err);
+      return (-1);
+===================================================================
+RCS file: RCS/simplecoms.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029295	Thu Feb  3 07:18:15 1983
+--- /tmp/,RCSt2029295	Thu Feb  3 07:18:19 1983
+***************
+*** 403,404
+      int proc = getword (MacNames, ": set-auto-fill-hook to procedure ");
+      if (proc >= 0)
+
+--- 403,410 -----
+      int proc = getword (MacNames, ": set-auto-fill-hook to procedure ");
++     MLvalue -> exp_type = IsString;
++     MLvalue -> exp_v.v_string = bf_cur -> b_AutoFillHook == 0 ?
++ 				"nothing" :
++ 				bf_cur -> b_AutoFillHook -> b_name;
++     MLvalue -> exp_release = 0;
++     MLvalue -> exp_int = strlen (MLvalue -> exp_v.v_string);
+      if (proc >= 0)
+***************
+*** 566,567
+      register    n;
+      setkey (GlobalMap, (Ctl('g')), IllegalOperation, "illegal-operation");
+
+--- 572,575 -----
+      register    n;
++     if (!Once)
++     {
+  	setkey (GlobalMap, (Ctl('g')), IllegalOperation, "illegal-operation");
+***************
+*** 614,615
+      defproc (SaveRestriction, "save-restriction");
+  }
+
+--- 622,624 -----
+  	defproc (SaveRestriction, "save-restriction");
++     }
+  }
+===================================================================
+RCS file: RCS/subproc.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029295	Thu Feb  3 07:18:34 1983
+--- /tmp/,RCSt2029295	Thu Feb  3 07:18:37 1983
+***************
+*** 139,140
+      if (!sh)
+  	sh = (char *) getenv ("SHELL");
+
+--- 139,142 -----
+      if (!sh)
++     {
++ 	FluidStatic(&sh, sizeof(sh));
+  	sh = (char *) getenv ("SHELL");
+***************
+*** 140,141
+  	sh = (char *) getenv ("SHELL");
+      if (!sh)
+
+--- 142,144 -----
+  	sh = (char *) getenv ("SHELL");
++     }
+      if (!sh)
+***************
+*** 266,267
+  InitProc () {
+      setkey (GlobalMap, (Ctl ('_')), ReturnToMonitor, "return-to-monitor");
+
+--- 269,272 -----
+  InitProc () {
++     if (!Once)
++     {
+  	setkey (GlobalMap, (Ctl ('_')), ReturnToMonitor, "return-to-monitor");
+***************
+*** 268,270
+      defproc (FilterRegion, "filter-region");
+!     defproc (ParseErrorMessagesInRegion, "parse-error-messages-in-region");
+      defproc (PauseEmacs, "pause-emacs");
+
+--- 273,276 -----
+  	defproc (FilterRegion, "filter-region");
+! 	defproc (ParseErrorMessagesInRegion,
+! 		 "parse-error-messages-in-region");
+  	defproc (PauseEmacs, "pause-emacs");
+***************
+*** 272,274
+      setkey (CtlXmap, (Ctl ('N')), NextError, "next-error");
+!     setkey (CtlXmap, ('!'), ExecuteMonitorCommand, "execute-monitor-command");
+      setkey (ESCmap, ('j'), IndentCProcedure, "indent-C-procedure");
+
+--- 278,281 -----
+  	setkey (CtlXmap, (Ctl ('N')), NextError, "next-error");
+! 	setkey (CtlXmap, ('!'), ExecuteMonitorCommand,
+! 				"execute-monitor-command");
+  	setkey (ESCmap, ('j'), IndentCProcedure, "indent-C-procedure");
+***************
+*** 274,275
+      setkey (ESCmap, ('j'), IndentCProcedure, "indent-C-procedure");
+  }
+
+--- 281,283 -----
+  	setkey (ESCmap, ('j'), IndentCProcedure, "indent-C-procedure");
++     }
+  }
+===================================================================
+RCS file: RCS/syntax.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029295	Thu Feb  3 07:18:46 1983
+--- /tmp/,RCSt2029295	Thu Feb  3 07:18:50 1983
+***************
+*** 287,288
+      register    i;
+      GlobalSyntaxTable.s_name = "global-syntax-table";
+
+--- 287,290 -----
+      register    i;
++     if (!Once)
++     {
+  	GlobalSyntaxTable.s_name = "global-syntax-table";
+***************
+*** 298,299
+      defproc (ModifySyntaxEntry, "modify-syntax-entry");
+  }
+
+--- 300,302 -----
+  	defproc (ModifySyntaxEntry, "modify-syntax-entry");
++     }
+  }
+===================================================================
+RCS file: RCS/undo.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029295	Thu Feb  3 07:19:01 1983
+--- /tmp/,RCSt2029295	Thu Feb  3 07:19:05 1983
+***************
+*** 152,153
+  InitUndo () {
+      setkey (CtlXmap, Ctl ('u'), Undo, "undo");
+
+--- 152,155 -----
+  InitUndo () {
++     if (!Once)
++     {
+  	setkey (CtlXmap, Ctl ('u'), Undo, "undo");
+***************
+*** 155,156
+      defproc (UndoMore, "undo-more");
+      DoneIsDone ();
+
+--- 157,159 -----
+  	defproc (UndoMore, "undo-more");
++     }
+      DoneIsDone ();
+===================================================================
+RCS file: RCS/window.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029295	Thu Feb  3 07:19:14 1983
+--- /tmp/,RCSt2029295	Thu Feb  3 07:19:19 1983
+***************
+*** 74,77
+  InitWin () {
+!     register struct window *w =
+!                             (struct window *) malloc (sizeof (struct window));
+      windows = w;
+
+--- 74,80 -----
+  InitWin () {
+!     register struct window *w;
+! 
+!     if (!Once)
+!     {
+! 	w = (struct window *) malloc (sizeof (struct window));
+  	windows = w;
+***************
+*** 103,104
+      defproc (MoveDotToXY, "move-dot-to-x-y");
+  }
+
+--- 106,114 -----
+  	defproc (MoveDotToXY, "move-dot-to-x-y");
++     }
++     else
++     {
++ 	DeleteOtherWindows();
++ 	windows -> w_height = ScreenLength - 1;	/* full screen window */
++ 	windows -> w_next -> w_height = 1;	/* minibuffer */
++     }
+  }
+***************
+*** 696,699
+  	}
+! 	else
+! 	    MiniBuf = *MiniBuf ? "" : 0;
+      }
+
+--- 706,709 -----
+  	}
+! /*	else
+! 	    MiniBuf = *MiniBuf ? "" : 0;*/
+      }
+===================================================================
+RCS file: RCS/windowman.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029295	Thu Feb  3 07:19:41 1983
+--- /tmp/,RCSt2029295	Thu Feb  3 07:19:44 1983
+***************
+*** 207,208
+      struct window  *w = wn_cur -> w_next;
+      register down = ArgState==HaveArg;
+
+--- 207,209 -----
+      struct window  *w = wn_cur -> w_next;
++ #ifdef notdef				/* SWT, use negative args */
+      register down = ArgState==HaveArg;
+***************
+*** 209,210
+      arg = 1;
+      if (w == 0 || w -> w_next == 0 && ResetMiniBuf == 0)
+
+--- 210,212 -----
+      arg = 1;
++ #endif
+      if (w == 0 || w -> w_next == 0 && ResetMiniBuf == 0)
+***************
+*** 215,217
+  	SetBfp (w -> w_buf);
+! 	WindowMove (w, down, 1, 0);
+  	SetBfp (wn_cur -> w_buf);
+
+--- 217,219 -----
+  	SetBfp (w -> w_buf);
+! 	WindowMove (w, 0, 1, 0);
+  	SetBfp (wn_cur -> w_buf);
+***************
+*** 222,223
+  InitWnMan () {
+      setkey (CtlXmap, (Ctl ('B')), ListBuffers, "list-buffers");
+
+--- 224,227 -----
+  InitWnMan () {
++     if (!Once)
++     {
+  	setkey (CtlXmap, (Ctl ('B')), ListBuffers, "list-buffers");
+***************
+*** 242,243
+      setkey (ESCmap, ('!'), LineToTopOfWindow, "line-to-top-of-window");
+  }
+
+--- 246,248 -----
+  	setkey (ESCmap, ('!'), LineToTopOfWindow, "line-to-top-of-window");
++     }
+  }
+================================================================
+These are only the changes for OnExit procs and AwaitProcessInput.
+RCS file: RCS/Omchan.c,v
+retrieving revision 1.1
+retrieving revision 1.2
+diff -b -c1 -r1.1 -r1.2
+*** /tmp/,RCSt1029765	Thu Feb  3 07:52:56 1983
+--- /tmp/,RCSt2029765	Thu Feb  3 07:53:01 1983
+***************
+*** 18,19
+  #include <sys/mx.h>
+  #include "window.h"
+
+--- 20,22 -----
+  #include <sys/mx.h>
++ 
+  #include "window.h"
+***************
+*** 26,27
+  
+  #define ChunkSize 500		/* amount to truncate when buffer overflows */
+
+--- 29,33 -----
+  
++ int	sel_ichans;	/* input channels */
++ int	sel_ochans;	/* blocked output channels */
++ 
+  #define ChunkSize 500	/* amount to truncate when buffer overflows */
+***************
+*** 35,37
+      struct sgttyb   ioctl_ans;
+! }               ioans_rec;
+  
+
+--- 41,43 -----
+      struct sgttyb   ioctl_ans;
+! }               ioans_rec, iopg_rec, ioany_rec;
+  
+***************
+*** 39,40
+  				   IOANS_REC */
+  
+
+--- 45,49 -----
+  				   IOANS_REC */
++ struct wh   iopg;		/* The record actually used to send
++ 				   IOPG_REC */
++ struct wh   ioany;
+  
+***************
+*** 49,50
+  struct channel_blk  stdin_chan;
+  int     child_changed;		/* Flag when a child process has ceased
+
+--- 58,60 -----
+  struct channel_blk  stdin_chan;
++ char stdin_buf[BUFSIZ];			/* used to buffer stdin chars */
+  int     child_changed;		/* Flag when a child process has ceased
+***************
+*** 87,90
+  {
+!     register    channel,
+!                 newfd,
+                  pid,
+
+--- 98,101 -----
+  {
+!     int    channel;
+!     register newfd,
+                  pid,
+***************
+*** 91,92
+                  i;
+      extern char *shell ();
+
+--- 102,104 -----
+                  i;
++     int pgrp;
+      extern char *shell ();
+***************
+*** 94,96
+      if ((channel = chan (mpx_fd)) == -1) {
+! 	error ("Can't connect subchannel\n");
+  	return - 1;
+
+--- 106,111 -----
+      if ((channel = chan (mpx_fd)) == -1) {
+! 	extern int errno, sys_nerr;
+! 	extern char * sys_errlist[];
+! 	error ("Can't connect subchannel: %s\n",
+! 	    (errno > 0 && errno <= sys_nerr) ? sys_errlist[errno] : "?");
+  	return - 1;
+***************
+*** 124,126
+      current_process -> p_id = pid;
+!     current_process -> p_flag = RUNNING;
+      current_process -> p_chan.ch_index = channel;
+
+--- 139,142 -----
+      current_process -> p_id = pid;
+!     current_process -> p_flag = RUNNING | CHANGED;
+!     child_changed++;
+      current_process -> p_chan.ch_index = channel;
+***************
+*** 146,148
+  				   has finished */
+! child_sig () {
+      register int    pid;
+
+--- 162,165 -----
+  				   has finished */
+! child_sig ()
+! {
+      register int    pid;
+***************
+*** 184,186
+      if (WIFSTOPPED (w)) {
+! 	p -> p_flag = STOPPED;
+  	p -> p_reason = w.w_stopsig;
+
+--- 201,203 -----
+      if (WIFSTOPPED (w)) {
+! 	p -> p_flag = STOPPED | CHANGED;
+  	p -> p_reason = w.w_stopsig;
+***************
+*** 186,187
+  	p -> p_reason = w.w_stopsig;
+      }
+
+--- 203,205 -----
+  	p -> p_reason = w.w_stopsig;
++ 	child_changed++;		/* Sure it did, it stopped */
+      }
+***************
+*** 279,281
+  fill_chan (chan)
+! register struct channel_blk *chan;
+  {
+
+--- 302,304 -----
+  fill_chan (chan)
+! struct channel_blk *chan;
+  {
+***************
+*** 309,314
+  
+-     if (child_changed) {
+- 	child_changed = 0;
+- 	change_msgs ();
+-     }
+  
+
+--- 332,333 -----
+  
+  
+***************
+*** 331,333
+  	    }
+! 	    this_channel -> ch_ptr = (char *) (MXP + 1);
+  	    this_channel -> ch_count = MXP -> count;
+
+--- 350,357 -----
+  	    }
+! 	    if (this_channel == mpxin)
+! 	    {
+! 		if (this_channel -> ch_count <= 0)
+! 		{
+! 		    this_channel -> ch_ptr = stdin_buf;
+! /*!*/		    cpyn(stdin_buf, (char *)(MXP + 1), MXP -> count);
+  		    this_channel -> ch_count = MXP -> count;
+***************
+*** 333,334
+  	    this_channel -> ch_count = MXP -> count;
+  	    mpx_count -= record_size;
+
+--- 357,375 -----
+  		    this_channel -> ch_count = MXP -> count;
++ 		}
++ 		else
++ 		{ register count = MXP -> count;
++ 		    if (count + this_channel -> ch_count +
++ 			(this_channel -> ch_ptr - stdin_buf) >= BUFSIZ)
++ 			count = BUFSIZ - this_channel -> ch_count -
++ 				(this_channel -> ch_ptr - stdin_buf);
++ /*!*/		    cpyn(this_channel -> ch_ptr + this_channel -> ch_count,
++ 			    (char *)(MXP + 1), count);
++ 		    this_channel -> ch_count += count;
++ 		}
++ 	    }
++ 	    else
++ 	    {
++ 		this_channel -> ch_ptr = (char *)(MXP + 1);
++ 		this_channel -> ch_count = MXP -> count;
++ 	    }
+  	    mpx_count -= record_size;
+***************
+*** 339,340
+  	    if (this_channel == mpxin) {
+  		mpxin -> ch_count--;
+
+--- 380,387 -----
+  	    if (this_channel == mpxin) {
++ 		if (chan != NULL)
++ 		{
++ 		    if (child_changed) {       /* need to do this here, too */
++ 			change_msgs ();
++ 			child_changed = 0;
++ 		    }
+  		    mpxin -> ch_count--;
+***************
+*** 342,343
+  	    }
+  	    else
+
+--- 389,391 -----
+  		}
++ 	    }
+  	    else
+***************
+*** 346,347
+      }
+      goto readloop;
+
+--- 394,404 -----
+      }
++     /* SWT - do this after stuffing output.  Hopefully the "Exited"
++      * message will always come at the end of the buffer then.
++      */
++     if (child_changed) {
++ 	change_msgs ();
++ 	child_changed = 0;
++     }
++ 
++     if (chan != NULL || mpx_count != 0)
+  	goto readloop;
+***************
+*** 347,348
+      goto readloop;
+  }
+
+--- 404,407 -----
+  	goto readloop;
++ 
++     return 0;
+  }
+***************
+*** 368,373
+  	    }
+! 	    else {		/* in response to a stty, we will simple
+! 				   give back the default tty record */
+! 		ioans.index = index;
+! 		if (write (mpx_fd, &ioans, sizeof (ioans)) != sizeof (ioans))
+  		    error ("Unable to reply to process IOCTL");
+
+--- 427,435 -----
+  	    }
+! 	    else if (msg -> mpx_arg == TIOCGPGRP) {
+! 		/* In response to TIOCGPGRP return an "error"
+! 		 * record.  This is  so csh will get the "right"
+! 		 * answer to its TIOCGPGRP.
+! 		 */
+! 		iopg.index = index;
+! 		if (write (mpx_fd, &iopg, sizeof (iopg)) != sizeof (iopg))
+  		    error ("Unable to reply to process IOCTL");
+***************
+*** 373,374
+  		    error ("Unable to reply to process IOCTL");
+  	    }
+
+--- 435,444 -----
+  		    error ("Unable to reply to process IOCTL");
++ 	    } else {
++ 		/* In response to anything else, reflect the same data
++ 		 * back.
++ 		 */
++ 		ioany.index = index;
++ 		ioany_rec.ioctl_ans = msg -> mpx_ioctl;
++ 		if (write (mpx_fd, &ioany, sizeof (ioany)) != sizeof (ioany))
++ 		    error ("Unable to reply to process IOCTL");
+  	    }
+***************
+*** 482,483
+  		    InsStr (line);
+  		    break;
+
+--- 553,555 -----
+  		    InsStr (line);
++ 		    ExitProc (& p -> p_chan, line);
+  		    break;
+***************
+*** 489,490
+  		    InsStr (line);
+  		    break;
+
+--- 561,563 -----
+  		    InsStr (line);
++ 		    ExitProc (& p -> p_chan, line);
+  		    break;
+***************
+*** 491,492
+  	    }
+  	}
+
+--- 564,569 -----
+  	    }
++ 	    if (p->p_flag & RUNNING)
++ 		ExitProc( &p->p_chan, "Running\n" );
++ 	    if (p->p_flag & STOPPED)
++ 		ExitProc( &p->p_chan, "Stopped\n" );
+  	}
+***************
+*** 496,497
+  
+  /* Send any pending output as indicated in the process block to the 
+
+--- 574,611 -----
+  
++ /* Invoke the on-exit-procedure, if any exists, for this channel. */
++ ExitProc( chan, reason )
++ register struct channel_blk * chan;
++ char *reason;
++ {
++     static int lockout;
++     struct channel_blk exit_chan;
++ 
++     if (lockout) {
++ 	error ("On-exit procedure asked for input: you lose big!!!");
++ 	return - 1;
++     }
++ 
++ #ifdef	HalfBaked
++     sighold(SIGINT);		/* Can''t interrupt this code */
++ #endif
++     lockout = 1;
++     if (chan -> ch_exit != NULL)
++     {
++ 	MPX_process -> v_binding -> b_exp -> exp_int =
++ 	    strlen (chan -> ch_buffer -> b_name);
++ 	MPX_process -> v_binding -> b_exp -> exp_v.v_string =
++ 	    chan -> ch_buffer -> b_name;
++ 
++ 	exit_chan.ch_ptr = reason;
++ 	exit_chan.ch_count = strlen(reason);
++ 	MPX_chan = &exit_chan;		/* make reason available */
++ 	ExecuteBound (chan -> ch_exit);
++ 	MPX_chan = NULL;
++     }
++     lockout = 0;
++ #ifdef HalfBaked
++     sigrelse(SIGINT);
++ #endif
++ 
++ }
+  /* Send any pending output as indicated in the process block to the 
+***************
+*** 532,533
+      else
+  	lockout = 1;
+
+--- 646,651 -----
+      else
++     {
++ #ifdef	HalfBaked
++ 	sighold(SIGINT);		/* Can''t interrupt this code */
++ #endif
+  	lockout = 1;
+***************
+*** 533,534
+  	lockout = 1;
+      if (chan -> ch_proc == NULL) {
+
+--- 651,653 -----
+  	lockout = 1;
++     }
+      if (chan -> ch_proc == NULL) {
+***************
+*** 567,568
+      lockout = 0;
+  }
+
+--- 686,690 -----
+      lockout = 0;
++ #ifdef HalfBaked
++     sigrelse(SIGINT);
++ #endif
+  }
+***************
+*** 651,652
+      current_process -> p_chan.ch_proc = (proc < 0 ? NULL : MacBodies[proc]);
+      sigrelse (SIGCHLD);
+
+--- 775,777 -----
+      current_process -> p_chan.ch_proc = (proc < 0 ? NULL : MacBodies[proc]);
++     current_process -> p_chan.ch_exit = NULL;
+      sigrelse (SIGCHLD);
+***************
+*** 742,743
+  
+  /* List the current processes.  After listing stopped or exited processes,
+
+--- 872,923 -----
+  
++ /* Insert an exit-procedure between a process and emacs. */
++ InsertExit ()
++ {
++     register char  *proc_name = getstr ("Process: ");
++     register struct process_blk *process;
++     register int    proc;
++ 
++     if ((process = find_process (proc_name)) == NULL) {
++ 	error ("Process does not exist");
++ 	return 0;
++     }
++     proc = getword (MacNames, "On-exit procedure: ");
++     process -> p_chan.ch_exit = (proc < 0 ? NULL : MacBodies[proc]);
++     return (0);
++ }
++ 
++ /* Reset exit rebinds the process exit proc to NULL */
++ ResetExit ()
++ {
++     register char  *proc_name = getstr ("Process: ");
++     register struct process_blk *process;
++ 
++     if ((process = find_process (proc_name)) == NULL) {
++ 	error ("Process does not exist");
++ 	return 0;
++     }
++     process -> p_chan.ch_exit = NULL;
++     return 0;
++ }
++ 
++ /* ProcessExitName returns the name of the process on-exit proc */
++ ProcessExitName ()
++ {
++     register char  *proc_name = getstr ("Process: ");
++     register struct process_blk *process;
++     char   *name;
++ 
++     if ((process = find_process (proc_name)) == NULL) {
++ 	error ("Process does not exist");
++ 	return 0;
++     }
++     MLvalue -> exp_type = IsString;
++     MLvalue -> exp_release = 0;
++     name = process -> p_chan.ch_exit
++ 	? process -> p_chan.ch_exit -> b_name : "";
++     MLvalue -> exp_int = strlen (name);
++     MLvalue -> exp_v.v_string = name;
++     return 0;
++ }
++ 
+  /* List the current processes.  After listing stopped or exited processes,
+***************
+*** 872,874
+      MLvalue -> exp_v.v_string = (char *) malloc (MLvalue -> exp_int + 1);
+!     strcpyn (MLvalue -> exp_v.v_string, MPX_chan -> ch_ptr, MLvalue -> exp_int);
+      MLvalue -> exp_v.v_string[MLvalue -> exp_int] = '\0';
+
+--- 1056,1058 -----
+      MLvalue -> exp_v.v_string = (char *) malloc (MLvalue -> exp_int + 1);
+!     cpyn (MLvalue -> exp_v.v_string, MPX_chan -> ch_ptr, MLvalue -> exp_int);
+      MLvalue -> exp_v.v_string[MLvalue -> exp_int] = '\0';
+***************
+*** 880,882
+      register struct process_blk *process;
+!     register char  *buf = getstr ("Process in buffer: ");
+  
+
+--- 1065,1067 -----
+      register struct process_blk *process;
+!     register char  *buf;
+  
+***************
+*** 882,883
+  
+      if ((process = find_process (buf)) == NULL) {
+
+--- 1067,1069 -----
+  
++     buf = getstr ("Process in buffer: ");
+      if ((process = find_process (buf)) == NULL) {
+***************
+*** 892,894
+  	sighold (SIGCHLD);
+! 	process -> p_flag = (process -> p_flag & ~STOPPED) | RUNNING;
+  	sigrelse (SIGCHLD);
+
+--- 1078,1081 -----
+  	sighold (SIGCHLD);
+! 	process -> p_flag = (process -> p_flag & ~STOPPED) | RUNNING |CHANGED;
+! 	child_changed++;
+  	sigrelse (SIGCHLD);
+***************
+*** 1022,1023
+  }
+  #endif
+
+--- 1219,1228 -----
+  }
++ 
++ /* Get input from a subprocess (or the tty) and process it.
++  * Tty input is just buffered until requested.
++  */
++ AwaitProcessInput ()
++ {
++     fill_chan(NULL);			/* just poll for input */
++ }
+  #endif
+***************
+*** 1045,1046
+      ioans.data = (char *) & ioans_rec;
+  
+
+--- 1251,1262 -----
+      ioans.data = (char *) & ioans_rec;
++  /* Answer TIOCGPGRP with a record containing a -1.  This is so
++     csh will work. */
++     iopg_rec.code = M_IOANS;
++     *(int *)(&iopg_rec.ioctl_ans) = -1;	/* gross! */
++     iopg.ccount = sizeof iopg_rec;
++     iopg.data = (char *) & iopg_rec;
++  /* Finally, any other ioctls get reflected. */
++     ioany_rec.code = M_IOANS;
++     ioany.ccount = sizeof ioany_rec;
++     ioany.data = (char *) & ioany_rec;
+  
+***************
+*** 1077,1078
+  
+      DefStrVar ("MPX-process", "");
+
+--- 1298,1301 -----
+  
++     if (!Once)
++     {
+  	DefStrVar ("MPX-process", "");
+***************
+*** 1088,1089
+      defproc (ProcessFilterName, "process-filter-name");
+      defproc (RegionToProcess, "region-to-process");
+
+--- 1312,1316 -----
+  	defproc (ProcessFilterName, "process-filter-name");
++ 	defproc (InsertExit, "insert-exit-procedure");
++ 	defproc (ResetExit, "reset-exit-procedure");
++ 	defproc (ProcessExitName, "process-exit-procedure-name");
+  	defproc (RegionToProcess, "region-to-process");
+***************
+*** 1102,1103
+      defproc (ProcessOutput, "process-output");
+      defproc (ListProcesses, "list-processes");
+
+--- 1329,1331 -----
+  	defproc (ProcessOutput, "process-output");
++ 	defproc (AwaitProcessInput, "await-process-input");
+  	defproc (ListProcesses, "list-processes");
+***************
+*** 1103,1104
+      defproc (ListProcesses, "list-processes");
+  #endif
+
+--- 1331,1333 -----
+  	defproc (ListProcesses, "list-processes");
++     }
+  #endif

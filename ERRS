@@ -1,0 +1,13 @@
+cc -O -R -DNewC -c emacs.c
+cc -O -R -DNewC -c dsp.c
+cc -O -R -DNewC -c keyboard.c
+cc -O -R -DNewC -c fileio.c
+cc -O -R -DNewC -c options.c
+cc -O -R -DNewC -c TrmTERM.c
+cc -O -R -DNewC -c mlisp.c
+cc -O -R -DNewC -c lispfuncs.c
+cc -O -R -DNewC -c mchan.c
+cc -O -R -DNewC -c ttyaccept.c
+cc -z -O -R -DNewC version.c buffer.o display.o emacs.o dsp.o window.o keyboard.o simplecoms.o  minibuf.o fileio.o windowman.o search.o subproc.o metacoms.o  errlog.o TrmC100.o TrmAmb.o columns.o options.o TrmTERM.o  macros.o casefiddle.o TrmI400.o mlisp.o ndbm.o  arithmetic.o lispfuncs.o abbrev.o sindex.o TrmVT100.o undo.o  syntax.o TrmMiniB.o TrmTEK4025.o mchan.o dbmanager.o abspath.o  unexec.o cpyn.o TrmGG.o TrmT1061.o ttyaccept.o -ltermlib  -ljobs -o temacs 
+cc -o makemail -g makemail.c 
+cc -o collectmail -g collectmail.c sindex.o lock.o 

@@ -1,0 +1,1 @@
+cmp -s $1 /usr/local/lib/emacs/$1

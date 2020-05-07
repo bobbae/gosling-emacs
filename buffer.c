@@ -1,0 +1,586 @@
+/* Buffer manipulation primitives */
+
+/*		Copyright (c) 1981,1980 James Gosling		*/
+
+/* Modified 7-Dec-80 DJH	Maintain vector of buffer names for ^x^o */
+
+#include "config.h"
+#include "buffer.h"
+#include "window.h"
+#include "syntax.h"
+#include "abbrev.h"
+#include "keyboard.h"
+#ifdef	MPXcode
+#include <sys/mx.h>
+#endif
+#include <sgtty.h>
+#include "mchan.h"
+#include "mlisp.h"
+#include "macros.h"
+
+char *malloc(),*realloc();
+
+/* The default values of several buffer-specific variables */
+static int DefaultFoldCase;
+static int DefaultRightMargin;
+static int DefaultLeftMargin;
+static int DefaultCommentColumn;
+int DefaultTabSize;		/* Also used as an extern in mlisp.c */
+
+/* insert character c at positon n in the current buffer */
+InsertAt (n, c)
+register    n; {
+    if (n != bf_s1 + 1)
+	GapTo (n);
+    if (bf_gap < 1)
+	if(GapRoom (1)) return;
+    if((bf_p1[++bf_s1] = c) == '\n') Cant1LineOpt++;
+    bf_gap--;
+    bf_p2--;
+    RecordInsert (n, 1);
+    if (bf_modified==0) Cant1LineOpt++;
+    bf_modified++;
+}
+
+/* Insert the N character string S at dot. */
+InsCStr (s, n)
+register    n;
+register char  *s; {
+    if (dot != bf_s1 + 1)
+	GapTo (dot);
+    if (bf_gap < n)
+	if(GapRoom (n)) return;
+    RecordInsert (dot, n);
+    while (/**s &&*/ --n >= 0) {
+	if (bf_gap <= 0) {
+	    error ("InsCStr gap overrun!");
+	    break;
+	}
+	if ((bf_p1[++bf_s1] = *s++) == '\n')
+	    Cant1LineOpt++;
+	bf_gap--;
+	DotRight (1);
+	bf_p2--;
+    }
+    if (bf_modified==0) Cant1LineOpt++;
+    bf_modified++;
+}
+
+/* delete k characters forward from position n in the current
+   buffer */
+DelFrwd (n, k)
+register    n; {
+    if (n != bf_s1 + 1)
+	GapTo (n);
+    if (k > bf_s2 - bf_mode.md_TailClip)
+	k = bf_s2 - bf_mode.md_TailClip;
+    if (k > 0) {
+	bf_gap += k;
+	RecordDelete (n, k);
+	if (n != dot || k > 1 || CharAt (n) == '\n')
+	    Cant1LineOpt++;
+	if (bf_modified == 0)
+	    Cant1LineOpt++;
+	bf_modified++;
+	bf_s2 -= k;
+	bf_p2 += k;
+	{			/* adjust markers */
+	    register struct marker *m;
+	    register    lim = bf_s1 + bf_gap;
+	    for (m = bf_cur -> b_markset; m; m = m -> m_next)
+		if (m -> m_pos > bf_s1 && m -> m_pos <= lim) {
+		    m -> m_pos = bf_s1 + 1;
+		    m -> m_modified++;
+		}
+	}
+    }
+}
+
+/* delete k characters backward from position n in the current
+   buffer */
+DelBack (n, k)
+register    n; {
+    if (n != bf_s1 + 1)
+	GapTo (n);
+    if (k > bf_s1 - bf_mode.md_HeadClip + 1)
+	k = bf_s1 - bf_mode.md_HeadClip + 1;
+    if (k > 0) {
+	if (n != dot || k > 1 || CharAt (n - 1) == '\n')
+	    Cant1LineOpt++;
+	bf_gap += k;
+	RecordDelete (n-k, k);
+	if (bf_modified == 0)
+	    Cant1LineOpt++;
+	bf_modified++;
+	bf_p2 += k;
+	bf_s1 -= k;
+	{			/* adjust markers */
+	    register struct marker *m;
+	    register    lim = bf_s1 + bf_gap;
+	    for (m = bf_cur -> b_markset; m; m = m -> m_next)
+		if (m -> m_pos > bf_s1 && m -> m_pos <= lim) {
+		    m -> m_pos = bf_s1 + 1;
+		    m -> m_modified++;
+		}
+	}
+    }
+}
+
+/* move the gap to position n */
+GapTo (n) {
+    register char  *p1,
+                   *p2,
+                   *lim;
+    register    delt;
+    int     old_s1 = bf_s1;
+    register struct marker *m = bf_cur -> b_markset;
+
+    if (n < 0)
+	n = 0;
+    if (n > bf_s1 + bf_s2)
+	n = bf_s1 + bf_s2 + 1;
+    if (n == bf_s1 + 1)
+	return;
+    if (n <= bf_s1) {		/* moving the gap left (into the first
+				   part) */
+/*	p1 = bf_p1+1 + bf_s1 + bf_gap; */
+	p2 = bf_p1 + 1 + bf_s1;
+	p1 = p2 + bf_gap;
+	lim = bf_p1 + n;
+	delt = p2 - lim;
+	while (p2 > lim)
+	    *--p1 = *--p2;
+	bf_s1 -= delt;
+	bf_s2 += delt;
+	while (m) {		/* adjust markers */
+	    if (m -> m_pos > old_s1) {
+		if (m -> m_pos <= old_s1 + bf_gap){
+		    m -> m_pos = old_s1 + bf_gap + 1;
+		    m -> m_modified++;
+		}
+	    }
+	    else
+		if (m -> m_pos > bf_s1+1){
+		    m -> m_pos += bf_gap;
+		    m->m_modified++;
+		}
+	    m = m -> m_next;
+	}
+    }
+    else {			/* moving the gap right (into the second
+				   part) */
+	p1 = bf_p1 + 1 + bf_s1;
+	p2 = p1 + bf_gap;
+	lim = bf_p2 + n;
+	delt = p2 - lim;	/* delt<0 */
+	while (p2 < lim)
+	    *p1++ = *p2++;
+	bf_s1 -= delt;
+	bf_s2 += delt;
+	while (m) {		/* adjust markers */
+	    if (m -> m_pos > old_s1 && m -> m_pos <= bf_s1 + bf_gap + 1){
+		if (m -> m_pos > old_s1 + bf_gap)
+		    m -> m_pos -= bf_gap;
+		else
+		    m -> m_pos = old_s1 + 1;
+		m->m_modified++;
+	    }
+	    m = m -> m_next;
+	}
+    }
+}
+
+/* make sure that the gap in the current buffer is at least k
+   characters wide */
+GapRoom (k) {
+    register struct buffer *b = bf_cur;
+    register char  *p1,
+                   *p2,
+                   *lim;
+    register struct marker *m;
+    register    old_gap;
+    if (bf_gap >= k)
+	return 0;
+    old_gap = bf_gap;
+    b -> b_size += k + 2000;
+    if (b -> b_base)
+	b -> b_base = (char *) realloc ((char *)b -> b_base, b -> b_size);
+    if (b -> b_base == 0){
+	bf_p1 = bf_p2 = (char *) -1;
+	b -> b_size = b -> b_gap = bf_gap = bf_s1 = bf_s2 = 0;
+	error ("Out of memory!  Lost buffer %s", b -> b_name);
+	return 1;
+    }
+    bf_p1 = b -> b_base - 1;
+    p1 = b -> b_base + b -> b_size;
+    p2 = b -> b_base + bf_s1 + bf_s2 + bf_gap;
+    lim = b -> b_base + bf_s1 + bf_gap;
+    bf_gap += p1 - p2;
+    while (lim < p2)
+	*--p1 = *--p2;
+    bf_p2 = bf_p1 + bf_gap;
+    for (m = b -> b_markset; m; m = m -> m_next)
+	if (m -> m_pos > bf_s1 + old_gap){
+	    m -> m_pos += bf_gap - old_gap;
+	    m -> m_modified++;
+	}
+    return 0;
+}
+
+/* create a buffer with the given name */
+struct buffer   *NewBf (name)
+char   *name; {
+    register struct buffer *b = (struct buffer *) malloc (sizeof *b);
+    b -> b_size = 2000;
+    b -> b_base = (char *) malloc (b -> b_size);
+    if (b -> b_base == 0)
+	b -> b_size = 0;	/* out of memory -- give the error message
+				   when we try to enlarge the buffer */
+    b -> b_name = savestr (name);
+    b -> b_fname = 0;
+    b -> b_kind = ScratchBuffer;
+    b -> b_modtime = 0;
+    b -> b_modified = 0;
+    b -> b_BackedUp = 0;
+    b -> b_EphemeralDot = 1;
+    b -> b_checkpointed = 0;
+    b -> b_checkpointfn = 0;
+    b -> b_size1 = b -> b_size2 = 0;
+    b -> b_gap = b -> b_size;
+    b -> b_next = buffers;
+    b -> b_markset = 0;
+    b -> b_mark = 0;
+    b -> b_WriteHook = 0;
+    b -> b_mode.md_keys = 0;
+    strcpy (b -> b_mode.md_ModeString, "Normal");
+    b -> b_mode.md_PrefixString[0] = 0;
+    b -> b_mode.md_abbrev = 0;
+    b -> b_mode.md_TailClip = 0;
+    b -> b_mode.md_HeadClip = 1;
+    b -> b_mode.md_syntax = &GlobalSyntaxTable;
+    b -> b_mode.md_AbbrevOn = GlobalAbbrev.a_NumberDefined > 0;
+    strcpy (b -> b_mode.md_ModeFormat, DefaultModeFormat);
+    b -> b_AutoFillHook = 0;
+    b -> b_mode.md_FoldCase = DefaultFoldCase;
+    b -> b_mode.md_RightMargin = DefaultRightMargin;
+    b -> b_mode.md_LeftMargin = DefaultLeftMargin;
+    b -> b_mode.md_CommentColumn = DefaultCommentColumn;
+    b -> b_mode.md_TabSize = DefaultTabSize;
+    b -> b_mode.md_NeedsCheckpointing = -1;
+    buffers = b;
+/* DJH -- Store buffer name in BufNames; realloc if necessary */
+    BufNames[NBuffers++] = b -> b_name;
+    if (--BufNameFree == 0) {
+	BufNames = (char **) realloc((char *)BufNames,2 * NBuffers * sizeof(char *));
+	BufNameFree = NBuffers;
+    }
+    BufNames[NBuffers] = 0;
+    return b;
+}
+
+/* Change the current buffer's name */
+ChangeBufferName()
+{
+    register char *bfn = getnbstr("Change buffer name to: ");
+    register int i;
+
+    if (bfn == 0)
+	return 0;
+    if (*bfn == '\0')
+	return 0;
+    for ( i=0; i<NBuffers; i++ )
+	if (bf_cur->b_name == BufNames[i])
+	{
+	    break;
+	}
+    if (FindBf(bfn))
+    {
+	error("Buffer \"%s\" already exists", bfn);
+	return 0;
+    }
+    BufNames[i] = 0;
+    free(bf_cur->b_name);
+    bf_cur->b_name = savestr (bfn);
+    BufNames[i] = bf_cur->b_name;
+}
+
+/* Delete the given buffer */
+DelBuf (b)
+register struct buffer *b;
+{
+    register struct window *w;
+    register struct buffer *p;
+    if (b == 0 || b -> b_kind == DeletedBuffer)
+	return;
+    {
+	register struct process_blk *proc;
+	for (proc = process_list; proc; proc = proc -> next_process)
+	    if (b == proc -> p_chan.ch_buffer) {
+		error ("There is a process attached to buffer %s, so I can't delete it",
+			b -> b_name);
+		return;
+	    }
+    }
+    b -> b_kind = DeletedBuffer;
+    {
+	register int    i;
+	for (i = 0; i < NBuffers; i++)
+	    if (b -> b_name == BufNames[i]) {
+		BufNames[i] = BufNames[--NBuffers];
+		BufNames[NBuffers] = 0;
+		break;
+	    }
+    }
+    for (w = windows; w; w = w -> w_next)
+	if (w -> w_buf == b)
+	    DelWin (w);
+    if (buffers == b)
+	buffers = b -> b_next;
+    for (p = buffers; p; p = p -> b_next)
+	if (p -> b_next == b) {
+	    p -> b_next = b -> b_next;
+	    break;
+	}
+    if (b -> b_base)
+	free (b -> b_base);
+    b -> b_base = 0;
+    b -> b_size = b -> b_size1 = b -> b_size2 = b -> b_gap = 0;
+    if (wn_cur -> w_buf == b) {
+	for (p = buffers; p; p = p -> b_next)
+	    if (p -> b_kind == FileBuffer)
+		break;
+	if (p == 0)
+	    p = buffers;
+	if (p == 0 || p == minibuf)
+	    p = NewBf ("main");
+	TieWin (wn_cur, p);
+    }
+    if (wn_cur -> w_buf != bf_cur)
+	SetBfp (wn_cur -> w_buf);
+}
+
+/* find a buffer with the given name -- returns nil if no such
+   buffer exists */
+struct buffer *FindBf(name)
+char   *name; {
+    register struct buffer *b = buffers;
+    while (b && strcmp (name, b -> b_name) != 0)
+	b = b -> b_next;
+    return b;
+}
+
+/* set the current buffer to p */
+SetBfp (p)
+register struct buffer *p; {
+    register struct buffer *c = bf_cur;
+    register struct window *w = wn_cur;
+    if (p && p -> b_kind == DeletedBuffer)
+	return;
+    Cant1WinOpt++;
+    if (c) {
+	if (w && c == w -> w_buf)
+	    SetMark (w -> w_dot, c, dot);
+	c -> b_size1 = bf_s1;
+	if (c -> b_modified != bf_modified) {
+	    c -> b_modified = bf_modified;
+	    Cant1LineOpt++;
+	}
+	c -> b_modtime = bf_modtime;
+	c -> b_size2 = bf_s2;
+	c -> b_gap = bf_gap;
+	c -> b_EphemeralDot = dot;
+    }
+    bf_cur = p;
+    bf_modified = p -> b_modified;
+    bf_modtime = p -> b_modtime;
+    bf_mode = p -> b_mode;
+    bf_s1 = p -> b_size1;
+    bf_s2 = p -> b_size2;
+    bf_gap = p -> b_gap;
+    bf_p1 = p -> b_base - 1;
+    bf_p2 = bf_p1 + bf_gap;
+    SetDot (w && p == w -> w_buf ? ToMark (w -> w_dot) : p -> b_EphemeralDot);
+}
+
+/* set the current buffer to the one named */
+SetBfn (name)
+char   *name; {
+    register struct buffer *p;
+    if(name==0) return 0;
+    p = FindBf (name);
+    if (p == 0)
+	p = NewBf (name);
+    SetBfp (p);
+    return 0;
+}
+
+/* Erase the contents of a buffer */
+EraseBf (b)
+register struct buffer *b; {
+    register struct buffer *old = bf_cur;
+    SetBfp (b);
+    DelFrwd (FirstCharacter, NumCharacters-FirstCharacter+1);
+    SetDot (FirstCharacter);
+    Cant1LineOpt++;
+    bf_modified = 0;
+    SetBfp (old);
+}
+
+SetWriteHook () {
+    int what = getword (MacNames, ": set-write-hook to procedure ");
+    MLvalue -> exp_type = IsString;
+    MLvalue -> exp_v.v_string = bf_cur -> b_WriteHook == 0 ?
+				"nothing" :
+				bf_cur -> b_WriteHook -> b_name;
+    MLvalue -> exp_release = 0;
+    MLvalue -> exp_int = strlen (MLvalue -> exp_v.v_string);
+    if (what >= 0) bf_cur -> b_WriteHook = MacBodies[what];
+    return 0;
+    
+}
+
+/* initialize the buffer routines */
+Initbf () {			/* (DJH) allocate buffer list */
+    if (! Once)
+    {
+	DefaultTabSize = 8;
+	BufNames = (char **) malloc( (BufNameFree = 10) * sizeof(char *) );
+	NBuffers = 0;
+	DefStrVar ("default-mode-line-format", DefaultModeFormat);
+	DefStrVar ("mode-line-format", bf_mode.md_ModeFormat);
+	SetSysDefault;
+	strcpy (DefaultModeFormat, " %[Buffer: %b%*  File: %f  %M (%m)  %p%]");
+	SetBfn ("  Minibuf");
+	minibuf = bf_cur;
+	SetBfn ("main");
+	minibuf -> b_mode.md_NeedsCheckpointing = 0;
+	bf_cur -> b_kind = FileBuffer;
+	DefIntVar ("default-case-fold-search", &DefaultFoldCase);
+	DefIntVar ("case-fold-search", &bf_mode.md_FoldCase);
+	SetSysDefault;
+	DefStrVar ("mode-string", bf_mode.md_ModeString);
+	DefIntVar ("buffer-is-modified", &bf_modified);
+	DefIntVar ("file-modification-time", &bf_modtime);
+	DefaultFoldCase = 0;
+	DefIntVar ("default-right-margin", &DefaultRightMargin);
+	DefIntVar ("right-margin", &bf_mode.md_RightMargin);
+	SetSysDefault;
+	DefaultRightMargin = 10000;
+	DefIntVar ("default-left-margin", &DefaultLeftMargin);
+	DefIntVar ("left-margin", &bf_mode.md_LeftMargin);
+	SetSysDefault;
+	DefaultLeftMargin = 1;
+	DefIntVar ("default-comment-column", &DefaultCommentColumn);
+	DefIntVar ("comment-column", &bf_mode.md_CommentColumn);
+	SetSysDefault;
+	DefaultCommentColumn = 33;
+	DefIntVar ("default-tab-size", &DefaultTabSize);
+	DefIntVar ("tab-size", &bf_mode.md_TabSize);
+	SetSysDefault;
+	DefIntVar ("needs-checkpointing", &bf_mode.md_NeedsCheckpointing);
+	DefIntVar ("abbrev-mode", &bf_mode.md_AbbrevOn);
+	DefStrVar ("prefix-string", bf_mode.md_PrefixString);
+	defproc (ChangeBufferName, "change-buffer-name");
+	defproc (SetWriteHook, "set-write-hook");
+    }
+}
+
+/* save a string in managed memory */
+char *savestr(s)
+char *s; {
+    char *ret;
+    ret = (char *) malloc (strlen (s) + 1);
+    strcpy (ret, s);
+    return ret;
+}
+
+/* Marker routines */
+
+/* create a new marker */
+struct marker  *NewMark () {
+    register struct marker *m
+	= (struct marker *) malloc (sizeof (struct marker));
+    m -> m_buf = 0;
+    m -> m_pos = 0;
+    m -> m_modified = 0;
+    m -> m_next = 0;
+    m -> m_prev = 0;
+    return m;
+}
+
+/* delink a marker from a list of markers */
+static  DelinkMark (m)
+register struct marker *m; {
+    if (m == 0 || m -> m_buf == 0)
+	return;
+    if (m -> m_prev)
+	m -> m_prev -> m_next = m -> m_next;
+    else
+	m -> m_buf -> b_markset = m -> m_next;
+    if (m -> m_next)
+	m -> m_next -> m_prev = m -> m_prev;
+}
+
+/* destroy a marker */
+DestMark (m)
+register struct marker *m; {
+    if (m == 0)
+	return;
+    DelinkMark (m);
+    free (m);
+}
+
+/* set marker m in buffer b at position p */
+SetMark (m, b, p)
+register struct marker *m;
+register struct buffer *b; {
+    if (m == 0) {
+	error ("Unitialized marker!");
+	return;
+    }
+    DelinkMark (m);
+    if(p<1) error("Bogus Setmark to %d", p), p = 1;
+    m -> m_buf = b;
+    m -> m_modified = 0;
+    m -> m_next = b -> b_markset;
+    m -> m_prev = 0;
+    if (m -> m_next)
+	m -> m_next -> m_prev = m;
+    b -> b_markset = m;
+    m -> m_modified = 0;
+    m -> m_pos = p;
+    if (b == bf_cur) {
+	if (p > bf_s1+1)
+	    m -> m_pos += bf_gap;
+    }
+    else
+	if (p > b -> b_size1+1)
+	    m -> m_pos += b -> b_gap;
+}
+
+/* copy the value of the source marker to the destination, handling all the
+   nasty linking and delinking */
+struct marker *
+CopyMark (dst, src)
+register struct marker *dst, *src;
+{
+    SetMark (dst, src -> m_buf, 1);
+    dst -> m_pos = src -> m_pos;
+    return dst;
+}
+
+/* set bf_cur to the buffer indicated by the given marker and return
+   the position ("dot" value) within that buffer; returns 0 iff the
+   marker wasn't set. */
+ToMark (m)
+register struct marker *m; {
+    if (m == 0 || m -> m_buf == 0)
+	return 0;
+    if (bf_cur != m -> m_buf)
+	SetBfp (m -> m_buf);
+    if (m -> m_pos <= bf_s1)
+	return m -> m_pos;
+    if (m -> m_pos <= bf_s1 + bf_gap)
+	return bf_s1 + 1;
+    return m -> m_pos - bf_gap;
+}

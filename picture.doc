@@ -1,0 +1,156 @@
+Emacs Picture Mode
+------------------
+
+Written by Bruce Israel - University of Maryland - February '83
+
+Introduction
+------------
+
+Emacs picture mode is a mode which allows easy handling of pictures.
+In this mode, in addition to the characters before and after a character,
+the characters above and below a character are considered to be important.
+In picture mode, character insertion is in overwrite mode instead of
+insertion mode so that the relative placement of the rest of the characters
+on a line are not affected.  When you type a character, it replaces the
+character that was at that position previously.  Character deletion is
+actually overwriting the character with a space.  The file is considered
+to be a quarter-plane extending infinitely in the downward and rightward
+directions.  Because of this, lines are discrete entities and the end
+of one is not adjacent to the beginning of another.
+
+Setting up.
+------- ---
+
+There are two ways of setting up picture-mode on a picture, depending on
+what you are editing.  If the whole file is a picture, then you can
+execute the function 'picture-mode' in that buffer by typing
+ESC-xpicture-mode<CR>.  This will set up the mode on the whole buffer.
+If you would like to edit a picture which is only a portion of a file
+which is of some other type (for instance, a picture which is within an
+Nroff document), then you set the mark and dot appropriately to mark
+the desired region, and then run the function "edit-picture".  This will
+edit the picture is a different buffer in picture mode in a recursive
+edit.  When you are finished, you can exit with ^C, or abort entirely with
+a ^Xa.
+
+Key Bindings.
+-------------
+
+-Insertions and Deletions-
+
+In picture mode, most keys are bound to functions that perform similar or
+identical functions as normal.  All printing characters are bound to the
+function self-replace, which replaces the next character on the line with
+the typed character, but does not affect line feeds.  ^N and ^P move you to
+the next or previous line, keeping you at the same column.  ^B and ^F move
+you backward or forward characters, but do not pass line boundaries.  In
+addition, ^F assumes that the line extends infinitely forward.  ^H
+also moves you backwards instead of affecting the text.  ^D and DEL will
+delete the appropriate character by replacing it with a space.
+
+Carriage Return, Line Feed, and ^O all act similar, but not identical to
+their standard functions.  Carriage return will create a blank line between
+the current line and the next line, irrespective of where you are on the
+line.  CTRL-O will act similarly, except it puts the blank line before the
+current line.  Linefeed is used for boxed tables and expanding diagrams.
+Linefeed will act like <CR> in that it creates a new line after the current
+line, except that it will duplicate the current line there, clear all
+characters that were text characters and not picture characters, and then
+position the cursor at the first cleared character.  For example, if I typed
+a <LF> at the end of the following line:
+
+||    Bruce    * Israel          *   12246-8518        ||
+
+it would yield:
+
+||    Bruce    * Israel          *   12246-8518        ||
+||             *                 *                     ||
+      ^
+
+with the cursor positioned where the arrow is pointing.  The set of
+characters to keep is user-settable.
+
+^K will delete the full line instead of just the line's text no matter where
+you are positioned on the line.
+
+-Handling Rectangles-
+
+There are a number of functions available for handling rectangular regions.
+Rectangular regions are denoted by the dot and mark representing two
+opposite corners of the rectangle.  The key CTRL-W is now delete-rectangle.
+It deletes the marked rectangle to a rectangular kill-buffer.  CTRL-Y will
+yank a deleted rectangle back with the current location denoting the upper
+left-hand corner of the rectangle.  The keys ^X-c and ^X-y are copy and
+yank rectangle, respectively.  Copy-rectangle will copy the currently marked
+rectangle to a named rectangle buffer.  Yank-rectangle will yank a named
+rectangle back at the current location.
+
+Options.
+--------
+
+-The Tab key-
+
+The Tab key has two different modes.  The default mode is overwriting, where
+the tab key will overwrite with spaces as far forward as it normal would
+have moved the cursor.  The second mode is table mode.  In table mode, the
+tab key will move forward on the current line until it is under a character
+on the previous line which is non-blank and also not a picture character as
+defined below.  This mode is handy for working with tables made up of
+several columns where tab will position you automatically at the next field.
+To change this mode, the function "toggle-tab" will switch between these
+two modes.
+
+-Picture Characters-
+
+The set of picture characters is used by both the TAB and LF keys as defined
+above.  The user can specify this set of characters by setting the global
+variable &picture-chars to the string of characters.  The default set of
+characters are the characters "-!|_=+/\:*#".
+
+-Directional Typing-
+
+One useful aspect of picture-mode is the ability to draw and type in any of
+eight directions on the screen.  At the bottom of the buffer, on the left
+end of the mode-line, is an indicator of which direction the typing will
+go.  There are four major directions and four minor directions available
+with a function for setting each direction available as the function
+<direction>-picture-movement.  The four major directions are up, down,
+left, and right, with right-picture-movement being the default.  These
+functions are respectively bound to the keys ESC-- (Escape-Dash), ESC-=
+(Escape-Equals), ESC-` (Escape-BackQuote), and ESC-^H (Escape-Backspace).
+These are an Escape followed by the four keys underneath the appropriate
+arrow keys on a VT-100 or DT-80 style keyboard.  Alternatively, they can
+be called via the ESC-x facility.
+
+The four minor directions are the "ne" (northeast), "nw" (northwest),
+"se" (southeast), and "sw" (southwest) directions.  These directions
+can only be set by typing ESC-x <dir>-picture-movement.
+
+When typing any printing characters, they will be inserted in place of
+the character the cursor is on, and then the cursor will be moved in
+the correct direction.  The compass directions represent moving the cursor
+in a forty-five degree angle, while the major directions represent moving
+the cursor at a 90 degree angle.
+
+The one printing character that this does not affect is the TAB character.
+Tab's will always move in the right-most direction no matter what direction
+is set.
+
+-Rectangle Name Prompting-
+
+When using ^X-c and ^X-y, the name of the rectangle will be prompted for
+either as a single character or as a complete word.  This is determined
+by the variable word-mode-prompt, which defaults to 0 (character-oriented
+prompting).
+
+-Overwriting Rectangles-
+
+The deletion and yanking of rectangles can be done either in overwrite mode
+or not.  In overwrite mode, a deleted rectangle is replaced by spaces, and
+a yanked rectangle replaces the rectangle that was there.  When overwrite
+mode is off, then a deleted rectangle is actually removed, with all
+characters following the rectangle on the lines actually moved left by N
+characters.  A yanked rectangle in this mode will actually be inserted
+at the currect column, with everything to the left of the cursor being
+moved over. The function "toggle-overwrite" will turn on or off overwrite
+mode.  Overwrite mode defaults to being on.

@@ -1,0 +1,11 @@
+#prp Trm.h TrmVT100.c abbrev.c abbrev.h abspath.c arithmetic.c
+#prp buffer.c buffer.h casefiddle.c collect.c collectmail.c columns.c
+#prp config.h cpyn.c dbadd.c dblist.c dbmanager.c dbprint.c
+#prp display.c display.h dsp.c emacs.c errlog.c fileio.c
+#prp filesort.c grep.c keyboard.c keyboard.h lispfuncs.c loadst.c
+#prp lock.c macros.c macros.h makemail.c mchan.c mchan.h
+#prp metacoms.c minibuf.c mlisp.c mlisp.h ndbm.c ndbm.h
+#prp options.c pchan.c quit.c recognize.c search.c search.h
+#prp sigkludge.c simplecoms.c sindex.c subproc.c syntax.c syntax.h
+#prp ttyaccept.c ttyconnect.c undo.c undo.h unexec.c version.c
+prp window.c window.h windowman.c

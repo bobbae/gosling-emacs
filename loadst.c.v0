@@ -1,0 +1,134 @@
+/*
+ * loadst -- print current time and load statistics.
+ *				-- James Gosling @ CMU, May 1981
+ *  loadst [ -n ] [ interval ]
+ *	07/29/81 jag -- also print info on presence of mail.
+ *	05/05/82 jag -- add disk drive utilization statistics.
+ *	08/09/82 swt -- change order of fields
+ */
+#include <nlist.h>
+#include <stdio.h>
+#include <time.h>
+#include <pwd.h>
+/* #include <sys/types.h> */
+#include <sys/param.h>
+#include <sys/dk.h>
+#include <sys/stat.h>
+
+struct tm *localtime ();
+
+struct nlist    nl[] = {
+    { "_avenrun" },
+#define	X_CPTIME	1
+	{ "_cp_time" },
+#define	X_DKXFER	2
+	{ "_dk_xfer" },
+    { 0 },
+};
+
+struct {
+    long	time[CPUSTATES];
+    long	xfer[DK_NDRIVE];
+} s, s1;
+
+double	etime;
+
+int nflag;			/* -n flag -- no newline */
+int uflag;			/* -u flag -- use current user ID rather
+				   than login user ID */
+int repetition;			/* repetition interval */
+
+
+main (argc, argv)
+char  **argv;
+{
+    register    kmem, i;
+    char mail[300];
+    struct stat st;
+    long mail_mtime, mail_atime;
+    long time0;
+
+    time(&time0);
+    if ((kmem = open ("/dev/kmem", 0)) < 0) {
+	fprintf (stderr, "Can't access /dev/kmem\n");
+	exit (1);
+    }
+    nlist ("/vmunix", nl);
+    while (--argc > 0) {
+	argv++;
+	if (strcmp (*argv, "-n") == 0)
+	    nflag++;
+	else if (strcmp (*argv, "-u") == 0)
+	    uflag++;
+	else
+	    if ((repetition = atoi (*argv)) <= 0) {
+		fprintf (stderr, "Bogus agument: %s\n", *argv);
+		exit (1);
+	    }
+    }
+    sprintf (mail, "/usr/spool/mail/%s",
+	    uflag ? ((struct passwd *) getpwuid(getuid())) -> pw_name
+		  : (char *) getenv("USER"));
+    if (stat(mail, &st) >= 0)
+    {
+	mail_mtime = st.st_mtime;
+	mail_atime = st.st_atime;
+    }
+    else
+	mail_mtime = 0;
+
+    while (1) {
+	register struct tm *nowt;
+	long    now;
+	float   avenrun[3];
+	time (&now);
+	nowt = localtime (&now);
+	lseek (kmem, (long) nl[0].n_value, 0);
+	read (kmem, avenrun, sizeof (avenrun));
+	if (stat (mail, &st) < 0)
+	    st.st_size = 0;
+	else if (st.st_atime > mail_atime)
+	{
+	    mail_atime = st.st_atime;
+	    mail_mtime = st.st_mtime;
+	}
+	lseek(kmem, (long)nl[X_CPTIME].n_value, 0);
+ 	read(kmem, s.time, sizeof s.time);
+	lseek(kmem, (long)nl[X_DKXFER].n_value, 0);
+	read(kmem, s.xfer, sizeof s.xfer);
+	etime = 0;
+	for (i=0; i < DK_NDRIVE; i++) {
+		register t = s.xfer[i];
+		s.xfer[i] -= s1.xfer[i];
+		s1.xfer[i] = t;
+	}
+	for (i=0; i < CPUSTATES; i++) {
+		register t = s.time[i];
+		s.time[i] -= s1.time[i];
+		s1.time[i] = t;
+		etime += s.time[i];
+	}
+	if(etime == 0.)
+		etime = 1.;
+	etime /= 60.;
+	{   register max = s.xfer[0];
+	    for(i=1; i<DK_NDRIVE; i++)
+		if (s.xfer[i]>max) max = s.xfer[i];
+	    printf ("%d:%02d%s %.2f[%d]%s",
+		nowt -> tm_hour == 0 ? 12
+		: nowt ->tm_hour>12 ? nowt->tm_hour-12 : nowt->tm_hour,
+		nowt -> tm_min,
+		nowt -> tm_hour>=12 ? "pm" : "am",
+		avenrun[0],
+		(int) (max/etime + 0.5),
+		st.st_size && st.st_mtime >= st.st_atime &&
+		st.st_mtime > time0 ? " Mail" : "");
+	}
+	if (!nflag)
+	    putchar ('\n');
+	fflush (stdout);
+	if (repetition <= 0)
+	    break;
+	sleep (repetition);
+    }
+}

@@ -1,0 +1,200 @@
+/* Header file for the buffer manipulation primitives */
+
+/*		Copyright (c) 1981,1980 James Gosling		*/
+
+/* Modified 7-Dec-80 DJH	Maintain list of buffer names for ^x^o */
+
+enum BufferKinds {		/* the "kinds" of stuff that can be in a
+				   buffer */
+	FileBuffer,		/* Contains info from a file (
+				   (WriteModifiedFiles will dump it) */
+	ScratchBuffer,		/* Scratch stuff -- automatically generated
+				   by emacs for stuff like ^X^B */
+	MacroBuffer,		/* contains the body of a macro, in which
+				   case the file name is actually the macro
+				   name */
+	DeletedBuffer		/* A buffer that has been deleted */
+};
+
+struct ModeSpecific {		/* Per-buffer mode-specific information */
+    char md_ModeString[30];	/* The commentary string that appears in
+				   the modeline of each window */
+    char md_ModeFormat[80];	/* The format of the mode line for this
+				   buffer */
+    char md_PrefixString[20];	/* The auto-newline prefix string */
+    int md_AbbrevOn;		/* true iff abbrev mode has been enabled for
+				   this buffer */
+    int md_FoldCase;		/* true iff case folded comparisons are
+				   to be done */
+    struct AbbrevTable *md_abbrev;	/* the abbrev table in use in this
+					   buffer */
+    struct SyntaxTable *md_syntax;	/* the syntax table in use in this
+					   buffer */
+    int  md_RightMargin;	/* Right margin for auto-newline */
+    int  md_LeftMargin;		/* Left margin for auto-newline */
+    int  md_CommentColumn;	/* Comment column for auto-newline */
+    int  md_NeedsCheckpointing;	/* true iff this buffer needs to be
+				   checkpointed */
+    int  md_TabSize;		/* The size of one tab stop, 8 usually */
+    int  md_HeadClip;		/* The number of characters clipped off the
+				   head of the buffer by restrict-region +1 */
+    int  md_TailClip;		/* The number of characters clipped off the
+				   tail of the buffer by restrict-region */
+    struct keymap *md_keys;	/* Keys that are bound local to this buffer
+				   (stuff like $J) */
+};
+
+/* structure that defines a buffer */
+struct buffer {
+/* An Emacs buffer is maintained as a single block of storage that
+   contains all of the text involved (eg. the entire contents of a
+   file, we're depending on the paging system to do a lot of work
+   for us).  This block is divided into two parts, which when
+   concatenated form one long text string.  The gap in the middle is
+   to allow insertions and deletions to be performed without
+   repeated copying of the entire buffer contents.  "dot" will not
+   necessarily be positioned at the gap, but if any insertions or
+   deletions are to be done around "dot" then the gap must be moved.
+
+   |<---------------size---------------------------------->|
+   |<-----b_size1----->|<---b_gap--->|<------b_size2------>|
+   ^--b_base								*/
+
+    char *b_base;		/* points to the beginning of the
+				   block of storage used to hold the
+				   text in the buffer */
+    char *b_name;		/* the name of this buffer */
+    int b_size;			/* the number of characters in the
+				   block pointed to by b_base.  Not
+				   all of the characters in the
+				   block may be valid */
+    int b_size1;		/* the number of characters in the
+				   first part of the block */
+    int b_gap;			/* the number of characters in the
+				   gap between the two parts */
+    int b_size2;		/* the number of characters in the
+				   second part of the block */
+    int b_EphemeralDot;		/* The value that dot had the last time that
+				   this buffer was visible in a window or
+				   accessed in any way */
+    char *b_fname;		/* the name of the file associated
+				   with this buffer */
+    int b_modtime;		/* Set to the modtime of the file when read */
+				/* Really should be time_t */
+    int b_modified;		/* true iff this buffer has been
+				   modified since it was last
+				   written */
+    int b_BackedUp;		/* true iff this buffer has been been backed
+				   up (if you write to its associated file
+				   and it hasn't been backed up, then a
+				   backup will be made) */
+    int b_checkpointed;		/* the value of b_modified at the last
+				   checkpoint.  Since b_modified is actually
+				   a count of the number of changes made
+				   (which gets zeroed when the file is
+				   written), deciding whether or not to
+				   checkpoint is done on the basis of the
+				   difference between b_modified and
+				   b_checkpointed */
+    char *b_checkpointfn;	/* file name used for checkpointing this
+				   buffer */
+    struct buffer *b_next;	/* the next buffer in the chain of
+				   extant buffers */
+    struct marker *b_markset;	/* the markers that refer to this
+				   buffer */
+    struct marker *b_mark;	/* The distinguished mark (set by
+				   ^@) for this buffer */
+    enum BufferKinds b_kind;	/* The kind of thing in this buffer */
+    struct ModeSpecific b_mode;	/* The mode specific information for this
+				   buffer */
+    struct BoundName *b_AutoFillHook;	/* The command that will be executed
+					   when the right margin is passed */
+    struct BoundName *b_WriteHook;	/* The command that will be executed
+					   just before the buffer is written
+					   out */
+};
+
+struct buffer *bf_cur;		/* the current buffer */
+char DefaultModeFormat[200];	/* User set mode line format */
+
+char *savestr();		/* saves a string in managed core */
+#ifdef	__osf__
+int   sprintf();		/* the usual printf to a string */
+char  *sprintfl();		/* sprintf with a length argument */
+#else   __osf__
+#ifdef i386
+int sprintf();
+char *sprintfl();		/* sprintf with a length argument */
+#else  i386
+char *sprintf();		/* the usual printf to a string */
+char *sprintfl();
+#endif  i386
+#endif	__osf__
+
+/* the following are derived from fields of the current buffer; when
+   switching buffers these are saved back into and restored from a
+   buffer structure */
+char *bf_p1;			/* b_base-1 */
+char *bf_p2;			/* b_base+gap-1 (used to reference
+				   characters in the second part) */
+int bf_s1;			/* b_size1 */
+int bf_s2;			/* b_size2 */
+int bf_gap;			/* b_gap */
+int bf_modified;		/* b_modified */
+long bf_modtime;		/* b_modtime */
+struct ModeSpecific bf_mode;	/* b_mode */
+
+struct buffer *buffers;		/* root of the list of extant
+				   buffers */
+struct buffer *minibuf;		/* The minibuf */
+
+#define FirstCharacter bf_mode.md_HeadClip
+				/* the first visible character in the
+				   buffer */
+#define NumCharacters (bf_s1+bf_s2-bf_mode.md_TailClip)
+				/* The number of characters visible in the
+				   buffer */
+
+char **BufNames;		/* List of buffer names */
+int  NBuffers;			/* How many buffers */
+int  BufNameFree;		/* How much space left over */
+				/* BufNameFree >= 1 for null at end */
+
+/* return the character at position n in the current buffer; n had
+   better be in bounds! n=1 is the first character */
+#define CharAt(n) *(((n)>bf_s1 ? bf_p2 : bf_p1) + (n))
+
+struct buffer *FindBf ();	/* find the named buffer; returns
+				   nil if not found */
+struct buffer *NewBf ();	/* create a new buffer */
+struct buffer *DelToBuf ();	/* Delete/move text into a buffer */
+#define InsStr(s) InsCStr (s, strlen(s))
+				/* insert the given string in the
+				   current buffer at dot */
+
+
+/* structure that defines a marker */
+struct marker {
+/* A marker is conceptually a (buffer,position) pair.  m_buf
+   indicates which buffer is marked, and m_pos indicates which
+   position is marked.  All markers for a particular buffer are
+   chained together by m_next, rooted at b_markset.  The
+   interpretation if m_pos is rather odd: it is the index from the
+   beginning of the allocated area (b_base) of the marked position
+   -- it is not the character number of the marked position.  This
+   interpretation causes markers to be invariant over insertions and
+   deletions, the only things that affect them are gap motions,
+   which should be far less frequent. */
+    struct buffer *m_buf;	/* the buffer that this marker
+				   refers to */
+    int m_pos;			/* the position in the buffer of the
+				   character referred to */
+    int m_modified;		/* true iff this marker has been
+				   modified since it was set */
+    struct marker *m_next;	/* the next marker that is chained
+				   to the same buffer */
+    struct marker *m_prev;	/* back pointer in marker chain */
+};
+
+struct marker *CopyMark (/*dst,src*/);	/* copy the value of a marker */
+struct marker *NewMark();	/* create a new marker */

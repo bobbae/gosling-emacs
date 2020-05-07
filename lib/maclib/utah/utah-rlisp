@@ -1,0 +1,189 @@
+(defun
+(make-rlisp-standard-header author comment year filename; by SWT
+(if (error-occured (setq author (getenv "USERNAME")))
+(setq author (get-tty-string "Author: ")))
+(setq comment (get-tty-string "One line comment: "))
+(setq filename (current-file-name))
+(progn i j
+(setq i (length filename))
+(setq j 0)
+(while (& (> i 0)
+(!= (substr filename i 1) "/"))
+(setq i (- i 1))
+(setq j (+ j 1)))
+(setq filename (substr filename (+ 1 i) j)))
+(if (bobp) (error-occured (forward-character)))
+(save-excursion
+(beginning-of-file)
+(save-excursion (insert-string "\n"))
+(insert-string (concat
+"% \n"
+"% " filename " - " comment "\n"
+"% \n"
+"% Author:\t"
+author
+"\n% \t\tComputer Science Dept.\n"
+"% \t\tUniversity of Utah\n"
+"% Date:\t"))
+(save-excursion (current-date-and-time))
+(provide-prefix-argument 3 (forward-word))
+(forward-character)
+(set-mark)
+(end-of-line)
+(backward-word)
+(delete-to-killbuffer)
+(end-of-line)
+(setq year (region-to-string))
+(insert-string (concat "\n"
+"% Copyright (c) " year " " author
+"\n%")))
+(if (bobp) (end-of-file))
+(novalue)))
+(defun
+(up-rlisp-prog-block
+(backward-balanced-paren-line)
+(while (& (! (bobp)) (! (looking-at "<<")))
+(backward-balanced-paren-line)))
+(down-rlisp-prog-block
+(up-rlisp-prog-block)
+(if (bobp)
+(end-of-file)
+(forward-paren))))
+(defun
+(rlisp-paren c
+(setq c
+(if prefix-argument-provided
+prefix-argument
+(last-key-struck) ) )
+(insert-character c)
+(save-excursion
+(backward-paren)
+(if (dot-is-visible)
+(sit-for 5)
+(progn
+(beginning-of-line)
+(set-mark)
+(end-of-line)
+(message (region-to-string))))))
+(electric-<<
+(if (eolp)
+(progn col
+(setq col (current-column))
+(insert-string "<<")
+(if (save-excursion (first-non-blank) (= col 1))
+(C-newline)
+(C-newline-and-indent))
+(insert-string ">>")
+(if (eobp)
+(progn
+(insert-string "\n")
+(previous-line)))
+(previous-line)
+(end-of-line)
+(if (save-excursion (first-non-blank) (= col 1))
+(C-newline)
+(C-newline-and-indent))
+(indent-to-tab-stop))
+(save-excursion Mark
+(up-rlisp-prog-block)
+(setq Mark (dot))
+(forward-paren)
+(beginning-of-line)
+(set-mark)
+(goto-character Mark)
+(next-line)
+(provide-prefix-argument prefix-argument
+(indent-region)))))
+(electric->>
+(insert-character '>')
+(provide-prefix-argument '>' (rlisp-paren))
+(if (eolp)
+(save-excursion col
+(backward-paren)
+(save-excursion
+(first-non-blank)
+(setq col (current-column)))
+(forward-paren)
+(backward-character)
+(backward-character)
+(delete-white-space)
+(to-col col))))
+(skip-spaces
+(forward-character)
+(while (| (| (= (following-char) ' ')
+(= (following-char) '	'))
+(= (following-char) 10))
+(forward-character)))
+(C-newline
+(save-excursion (insert-character ' '))
+(if (looking-at (concat "[ \t]*"
+(if (= comment-end "")
+"$"
+(quote comment-end))))
+(progn
+(delete-next-character)
+(end-of-line))
+(delete-next-character))
+(save-excursion (insert-character '.'))
+(delete-white-space)
+(delete-next-character)
+(Newline))
+(C-newline-and-indent
+(C-newline)
+(provide-prefix-argument prefix-argument (indent-nested))))
+(defun
+(electric-rlisp-mode
+(load-comment)
+(use-syntax-table "rlisp")
+(autoload "rlisp-execute" "rlisp-proc.ml")
+(local-bind-to-key "rlisp-execute" "\ee")
+(local-bind-to-key "rlisp-execute" "\eOM")
+(if (error-occured
+(local-bind-to-key "send-character" "\^c"))
+(progn
+(load "process.ml")
+(local-bind-to-key "send-character" "\^c")))
+(setq associated-process "rlisp")
+(local-bind-to-key "rlisp-paren" ')')
+(local-bind-to-key "rlisp-paren" ']')
+(local-bind-to-key "electric-<<" "\e{")
+(local-bind-to-key "electric->>" '}')
+(local-bind-to-key "tab-to-tab-stop" "\e\^I")
+(local-bind-to-key "indent-nested" '^I')
+(local-bind-to-key "dedent-to-tab-stop" "\eI")
+(local-bind-to-key "indent-to-tab-stop" "\ei")
+(local-bind-to-key "indent-region" "\^X\t")
+(local-bind-to-key "indent-under" "\^Xi")
+(local-bind-to-key "C-newline" '^M')
+(local-bind-to-key "C-newline-and-indent" '^J')
+(local-bind-to-key "comment" "\e;")
+(local-bind-to-key "global-comment" "\^X;")
+(local-bind-to-key "delete-comment" "\^Z;")
+(local-bind-to-key "next-comment" "\en")
+(local-bind-to-key "previous-comment" "\ep")
+(local-bind-to-key "indent-new-comment" "\e\^J")
+(local-bind-to-key "up-rlisp-prog-block" "\e\^P")
+(local-bind-to-key "down-rlisp-prog-block" "\e\^N")
+(local-bind-to-key "backward-paren" "\e(")
+(local-bind-to-key "forward-paren" "\e)")
+(error-occured
+(if (= (getenv "TERM") "vt100")
+(vt100-rlisp-keys)))
+(setq mode-string "rlisp")
+(setq comment-column default-comment-column)
+(setq comment-begin "% ")
+(setq comment-end "")
+(setq comment-start "%")
+(setq comment-continuation "")
+(setq tab-stops "    :   :   :   :   :   :   :   :   :   :   :   :   :   :   :   :   :   :   :   :")
+(novalue)))
+(use-syntax-table "rlisp")
+(modify-syntax-entry "()   (")
+(modify-syntax-entry ")(   )")
+(modify-syntax-entry "(>   <")
+(modify-syntax-entry ")<   >")
+(modify-syntax-entry "(]   [")
+(modify-syntax-entry ")[   ]")
+(modify-syntax-entry """    """)
+(modify-syntax-entry "w    _!")
+(novalue)

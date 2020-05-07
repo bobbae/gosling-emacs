@@ -1,0 +1,65 @@
+/* Routines to deal with column numbering */
+
+/*		Copyright (c) 1981,1980 James Gosling		*/
+
+#include "window.h"
+#include "buffer.h"
+
+/* calculate the print column at dot */
+CalcCol () {
+    register    p = ScanBf ('\n', dot, -1);
+    register    col = 1;
+    while (p < dot) {
+	register char   c = CharAt (p);
+	if (c == 011)
+	    col = ((col - 1) / bf_mode.md_TabSize + 1)
+			* bf_mode.md_TabSize + 1;
+	else
+	    if (c < 040 || c >= 0177)
+		col += CtlArrow ? 2 : 4;
+	    else
+		col += 1;
+	p++;
+    }
+    DotCol = col;
+    ColValid++;
+    return col;
+}
+
+/* Insert tabs and spaces until we're out to at least column n */
+ToCol (n) {
+    register    col = CurCol;
+    register    ncol;
+    if (col >= n)
+	return;
+    while ((ncol = ((col - 1) / bf_mode.md_TabSize + 1) * bf_mode.md_TabSize + 1) <= n) {
+	SelfInsert ('\t');
+	col = ncol;
+    }
+    while (col < n) {
+	SelfInsert (' ');
+	col++;
+    }
+    DotCol = col;
+    ColValid = 1;
+}
+
+/* Calculate the indentation of the current line */
+CurIndent () {
+    register    p = ScanBf ('\n', dot, -1);
+    register    col = 1;
+    register lim = NumCharacters;
+    while (p <= lim) {
+	register char   c = CharAt (p);
+	if (c == 011)
+	    col = ((col - 1) / bf_mode.md_TabSize + 1)
+				* bf_mode.md_TabSize + 1;
+	else
+	    if (c == 040)
+		col += 1;
+	    else
+		break;
+	p++;
+    }
+    return col;
+}

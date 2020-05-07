@@ -1,0 +1,232 @@
+-*-Text-*-
+This is the file INFO;DIR >, which contains the topmost node of the
+info hierarchy.  The first time you invoke INFO you start off
+looking at that node ( "(INFO;DIR)Top" ).
+
+File: DIR	Node: Top	This is the top of the tree
+
+This is the Directory node of INFO.  The "D" command comes back here.
+The directory is a list of all the major topics that INFO knows about.
+You can see it, starting ten lines or so below this line.
+
+If you need help in using INFO, "?" will get you a brief refresher
+listing all the commands, and "H" will show you a primer.  If this is
+your first use of INFO, you should definitely type "H".  To exit INFO
+type "Q".
+
+Everyone is encouraged and asked, urged and exhorted, implored and cajoled,
+to add documentation to this tree. (Visit Menu item INFO for how).
+
+* Menu: The "Menu" is the list of topics.  Here it is:
+
+* General information programs::
+;* Twenex::
+* Text Editors::
+* Formatting Systems for Text::
+;* Programming Systems::     (a few, from MIT)
+* Languages: (LANGUAGES).   (all you ever heard of, briefly)
+;* Debugging facilities::
+* Terminal Support::
+* Miscellaneous Topics::
+* Local: (local)Top	Information about local topics
+
+General information programs:
+
+* INFO:	(info)Top	INFO is this program.  Look here for how to
+			add documentation to the tree.
+  ^^ Notice that INFO is the topic, while (INFO)Top is the node name.
+
+Twenex:
+
+;* JSYS: (JSYS)		An online form of the monitor calls manual.
+
+;* EXEC: (EXEC)		Documents all the EXEC commands, and how to invoke
+			many utility programs such as compilers.
+
+Text Editors:
+
+* EMACS: (EMACS)Top	EMACS is an editor / collection of subsystems.
+
+* TAGS: (TAGS)		TAGS, an EMACS library, remembers the location
+			of every tag in one or more files, so you can
+			go to any of them very quickly.
+
+Formatting Systems for Text:
+
+;* ATSIGN: (ATSIGN)	Generates program or text listings with
+			cross references, table of contents, etc.
+
+;* R: (RGUIDE)		A general, multi-font, multi-device, multi-system
+;* RGUIDE: (RGUIDE)	text formatter, with many advanced features such
+			as footnotes, table of contents, etc., available.
+			Currently the most popular formatter in the LCS/AI
+			community.  Runs on ITS, VAX, and UNIX, too.
+			
+;* RMAN: (DOC:R20.MANUAL)*
+			The R reference manual.  You probably
+			want the R GUIDE, instead.
+
+;* ISPELL: (ISPELL)
+			This is a program to check and correct spelling.
+			It understands the syntax of source documents
+			for the formatters TJ6, R, PUB, SCRIBE, and TEX.
+			It is available (under the name SPELL) on ITS also.
+
+Programming Systems:
+(These entries are generally too large to be useful.  Perhaps they will
+ be restructured someday...)
+
+;* TECO: (TECORD.INFO)*
+			An editing system in which higher level editor
+			packages such as EMACS are written.
+
+;* TECOA: (TECO ARCHIV)*
+			A record of TECO updates.
+;* MIDAS: (MIDAS)	The powerful assembly/macro language in which
+			most machine language programs on ITS are
+			written.
+
+;* PALX: (PALX ORDER)*
+			A cross assembler for PDP-11 assembly language.
+
+Utilities:
+
+;* SRCCOM: (SRCCOM)	A source-compare utility, with options for 
+			manual or automatic merging.
+
+Debugging facilities:
+
+;* TDEBUG: (TDEBUG)Top
+			TDEBUG provides a stepping facility for
+			Teco macros.
+
+Terminal Support:
+
+;* Terminals: (TERMS)
+			This is a description of various display
+			terminals. 
+
+;* ITSTTY: (ITSTTY)
+			A description of the terminal subsystem of the
+			ITS operating system.
+
+Miscellaneous Topics:
+
+;* XGP: (XGP)
+			This is a description of the facilities
+			of the XGP device, its spooler, and the
+			XGP program, which is used to queue
+			files for output on the XGP.
+
+Node: General information programs	Up: Top
+
+* Menu:
+
+* INFO:	(info)Top	INFO is this program.  Look here for how to
+			add documentation to the tree.
+  ^^ Notice that INFO is the topic, while (INFO)Top is the node name.
+
+
+Node: Twenex	Up: Top
+
+* Menu:
+
+;* JSYS: (JSYS)		An online form of the monitor calls manual.
+
+;* EXEC: (EXEC)		Documents all the EXEC commands, and how to invoke
+			many utility programs such as compilers.
+
+Node: Text Editors	Up: Top
+
+* Menu:
+
+* EMACS: (EMACS)Top	EMACS is an editor / collection of subsystems.
+
+* TAGS: (TAGS)		TAGS, an EMACS library, remembers the location
+			of every tag in one or more files, so you can
+			go to any of them very quickly.
+
+
+Node: Formatting Systems for Text	Up: Top
+
+* Menu:
+
+;* ATSIGN: (ATSIGN)	Generates program or text listings with
+			cross references, table of contents, etc.
+
+;* R: (DOC:R20.MANUAL)*
+			A general, multi-font, multi-device, multi-system
+			text formatter, with many advanced features such
+			as footnotes, table of contents, etc., available.
+			(This file is not INFO-ized; it is a on-line
+			version of the R Reference Manual.  A PRESS
+			format version of the manual resides in
+			MC:R;MANUAL PRESS.)
+
+;* RGUIDE: (RGUIDE)	This file is an on-line guide to using R
+			with its standard macro package.  This
+			file IS INFO-ized, but can also be
+			printed and read offline.  This what you
+			want to read to learn how to use R.
+
+;* ISPELL: (ISPELL)
+			This is a program to check and correct spelling.
+			It understands the syntax of source documents
+			for the formatters TJ6, R, PUB, SCRIBE, and TEX.
+			It is available (under the name SPELL) on ITS also.
+
+Node: Programming Systems	Up: Top
+
+(These entries are generally to large to be useful.  Perhaps they will
+ be restructured someday...)
+
+* Menu: 
+
+;* TECO: (TECORD..)*
+			An editing system in which higher level editor
+			packages such as EMACS are written.
+
+;* TECOA: (TECO ARCHIV)*
+			A record of TECO updates.
+
+;* MIDAS: (MIDAS)	The powerful assembly/macro language in which
+			most machine language programs on ITS are
+			written.
+
+;* PALX: (PALX ORDER)*
+			A cross assembler for PDP-11 assembly language.
+
+
+Node: Debugging facilities	Up: Top
+
+* Menu:
+
+;* TDEBUG: (TDEBUG)
+			TDEBUG provides a stepping facility for
+			Teco macros.
+
+
+
+
+Node: Terminal Support		Up: Top
+
+* Menu:
+
+;* Terminals: (TERMS)
+			This is a description of various display
+			terminals. 
+
+;* ITSTTY: (ITSTTY)
+			Describes the terminal subsystem of the ITS
+			operating system.
+
+
+Node: Miscellaneous Topics	Up: Top
+
+* Menu:
+
+;* XGP: (XGP)
+			This is a description of the facilities
+			of the XGP device, its spooler, and the
+			XGP program, which is used to queue
+			files for output on the XGP.

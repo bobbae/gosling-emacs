@@ -1,0 +1,64 @@
+head     1.2;
+access   ;
+symbols  ;
+locks    ; strict;
+comment  @ * @;
+
+
+1.2
+date     86.05.06.14.49.29;  author mcdaniel;  state Exp;
+branches ;
+next     1.1;
+
+1.1
+date     86.04.16.13.53.43;  author mcdaniel;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+1.2
+log
+@
+@
+text
+@/* The types for search globals to be saved by SaveExcursion */
+
+#define	ESIZE	500		/* the maximum size of an RE */
+#define	NBRA	9		/* the maximum number of meta-brackets in an
+				   RE -- \( \) -- cant handle >9 */
+#define NALTS	10		/* the maximum number of \|'s */
+
+struct search_globals {	
+    int  expbuf[ESIZE + 4];	/* The most recently compiled search string */
+    int  *alternatives[NALTS];	/* The list of \| seperated alternatives */
+    int braslist[NBRA];		/* RE meta-bracket start list */
+    int braelist[NBRA];		/* RE meta-bracket end list */
+    int loc1;			/* The buffer position of the first
+				   character of the most recently found
+				   string */
+    int loc2;			/* The buffer position of the character
+				   following the most recently found string */
+    int nbra;			/* The number of meta-brackets in the most
+				   recently compiled RE */
+    int *TRT;			/* The current translation table */
+} search_globals;
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d9 2
+a10 2
+    char expbuf[ESIZE + 4];	/* The most recently compiled search string */
+    char *alternatives[NALTS];	/* The list of \| seperated alternatives */
+d20 1
+a20 1
+    char *TRT;			/* The current translation table */
+@

@@ -1,0 +1,4 @@
+DESTINATION = ( saturn )
+
+/n3/emacs/maclib/* -> ${DESTINATION}
+	install -v -y /usr/local/lib/emacs/maclib ;

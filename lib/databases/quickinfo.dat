@@ -1,0 +1,399 @@
+(copysymbol 's_arg 'g_pred)
+(putaccess 'a_array 's_func)
+(namestack)
+(fillarray 's_array 'l_itms)
+(eval-when l_time g_exp1 ...)
+(bindstack)
+(arraycall 's_type 'a_array 'x_ind1 ...)
+(aexploden 's_arg)
+tgetflag(id)
+int setpwent();
+(setplist 's_atm 'l_plist)
+int setgrent();
+(putdelta 'a_array 'x_delta)
+(nreverse 'l_arg)
+(flatsize 'g_form ['x_max])
+(status features)
+(exploden 'g_val)
+(explodec 'g_val)
+(sstatus dumpmode x_val)
+clearerr(stream)
+(arrayref 's_name 'x_ind)
+(allocate 's_type 'x_pages)
+(aexplode 's_arg)
+TIOCSETN: Set the parameters but do not delay or flush input.
+TIOCEXCL: Set 'exclusive-use' mode: no further opens are permitted.
+(tyipeek ['p_port])
+char *ttyname(fildes)
+(syscall)
+char *strcatn(s1, s2, n)
+char	*sprintf(string, format, args) -- generate a formatted string.
+(reverse 'l_arg)
+(remprop 's_name 'g_ind)
+(putprop 's_name 'g_val 'g_ind)
+(putdisc 'y_func 's_discipline)
+putchar(c)
+(product ['n_arg1 ... ])
+(outfile 's_filename)
+mpxcall(cmd, vec)
+(maplist 'u_func 'l_arg1 ...)
+linemod(s) char s[ ];
+(implode 'l_arg)
+int	geteuid() { return(1); }
+(getdisc 't_func)
+FILE	*freopen(s, m, f) char *s, *m; FILE *f; { return(stdin); }
+extract(i, xd)
+encrypt(s, i) char *s; {}
+(defprop s_atm g_val g_ind)
+(declare [g_arg ...])
+connect(fd, cd, end)
+char	*asctime(t) struct tm *t; { return(); }
+VTDELAY  0040000 Select form-feed and vertical-tab delays
+TBDELAY  0006000 Select tab delays
+SIGTERM 15   software termination signal
+SIGSEGV 11*  segmentation violation
+SIGKILL 9    kill (cannot be caught or ignored)
+CRDELAY  0030000 Select carriage-return delays
+wdleng(){return(0); }
+char *valloc(size)
+int	unlink(s) char *s; { return(0); }
+int	strlen(s) char *s; { return(1); }
+char	*strcpy(a, b) char *a, *b; { ; }
+(signal 'x_signum 's_name)
+setjmp(e) int e[3]; { return(0); }
+setbuf( f, b ) FILE *f; char *b; {;}
+(rplaca 'l_arg1 'g_arg2)
+char *rindex(s, c)
+(retbrk ['x_level])
+profil(b, s, o, i) char *b; {;}
+printf(format, args) -- formatted print routine
+pclose(stream)
+openpl( )
+(oblist)
+(nwritn ['p_port])
+char	*mktemp(p) char *p; { return(p);}
+(mapcon 'u_func 'l_arg1 ...)
+(mapcar 'u_func 'l_arg1 ...)
+(length 'l_arg)
+isatty(fildes)
+(infile 's_filename)
+int	getpid() { return(1); }
+(getenv 's_name)
+(getaux 'a_array)
+(gensym 's_leader)
+(status g_code)
+int	fwrite( p, s, n, f ) char *p; FILE *f; {return(0);}
+fscanf( f, s ) FILE *f; char *s; {return(1);}
+(floatp 'g_arg)
+fileno(stream)
+fflush(f) FILE *f; {return(0);}
+fclose(f) FILE *f; {return(0);}
+execve(name, argv, envp);
+execle(name, arg0, arg1, ..., argn, 0,
+(errset ???)
+double(x);
+detach(i, xd)
+(concat ['s_arg1 ... ])
+attach(i, xd)
+assert (expression)
+access(name, mode)
+(absval 'n_arg)
+SIGSYS  12*  bad argument to system call
+SIGIOT  6*   IOT instruction
+SIGINT  2    interrupt
+SIGILL  4*   illegal instruction (not reset when caught)
+SIGHUP  1    hangup
+(Divide 'i_dividend 'i_divisor)
+CBREAK   0000002 Return each character as soon as it is tped
+int	write(f, b, l) char *b; { return(l); }
+vread(fildes, buffer, nbytes)
+vfree(cp)
+tputs(cp, affcnt, outc)
+(times ['n_arg1 ... ])
+space(x0, y0, x1, y1)
+(shell)
+scanf( f ) char *f; {return(1); }
+(sassq 'g_arg1 'l_arg2 'sl_func)
+(reset)
+(ratom ['p_port])
+(quote g_arg)
+qsort(base, nel, width, compar)
+(ptime)
+(progv 'l_locv 'l_initv g_exp1 ...)
+(prog2 g_exp1 g_exp2 [g_exp3 ...])
+(princ 'g_arg ['p_port])
+(portp 'g_arg)
+point(x, y)
+pause() {;}
+(patom 'g_exp ['p_port])
+(opval 's_arg ['g_newval])
+npgrp(i, xd, pgrp)
+nlist(filename, nl)
+(nconc 'l_arg1 'l_arg2)
+int	mount(s, n, f) char *s, *n; { return(0); }
+long	lseek(f, o, d) long o; { return(0); }
+double ldexp(value, exp)
+l3tol(lp, cp, n)
+intss(){return(1); }
+double hypot(x, y)
+double gamma(x)
+long ftell(stream)
+int	fstat(f, b) struct stat *b; { return(0); }
+fread( p, s, n, f ) char *p; FILE *f; {return(1);}
+fputs(s,f) char *s; FILE *f; {;}
+fputc(c, stream)
+FILE	*fopen(s,m) char *s, *m; { return(stdin); }
+char	*fgets( s, l, f ) char *s; FILE *f; { return(s); }
+execv(s, v) char *s, *v[]; {;}
+execl(f, a) char *f, *a; {;}
+erase( )
+(equal 'g_arg1 'g_arg2)
+(defun s_name [s_mtype] ls_argl g_exp1 ...)
+datum: typedef struct { char *dptr; int dsize; };
+char	*ctime(c) time_t *c;{ return(); }
+int	creat(s, m) char *s; { return(0); }
+int	chown(s, u, g) char *s; { return(0); }
+(chdir 's_path)
+(cfasl 'st_file 'st_entry 's_funcname ['st_library])
+(boole 'x_key 'x_v1 'x_v2 ...)
+double atan2(x, y)
+(assoc 'g_arg1 'l_arg2)
+(ascii x_charnum)
+(array s_name s_type x_dim1 ... x_dimi)
+_exit(status)
+CRMOD    0000020 Map CR into LF; echo LF or CR as CR-LF
+B1800   10   1800 baud
+B1200   9    1200 baud
+(what 'g_arg)
+(type 'g_arg)
+long	time(t) long *t; { return(0);}
+long	tell(f) { return((long)0); }
+double tanh(x)
+(sub1 'n_arg)
+(sqrt 'fx_arg)
+(setq s_atm1 'g_val1 [ s_atm2 'g_val2 ... ... ])
+char	*sbrk(i) { return((char *)0); }
+rand( )
+int	pipe(f) int f[2]; { return(0); }
+(onep 'g_arg)
+(null 'g_arg)
+move(x, y)
+double modf(value, iptr)
+(memq 'g_arg1 'l_arg2)
+(load 's_filename)
+line(x1, y1, x2, y2)
+(last 'l_arg)
+join(fd, xd)
+int	gtty(f, b) struct sgttyb *b; { return(0); }
+int getw(stream)
+char *gets(s)
+free(p) char *p; {;}
+(fixp 'g_arg)
+char	*fcvt(v, n, d, s) double v; int *d, *s; { return(); }
+double fabs(x)
+(exit ['x_code])
+(eval 'g_val)
+char	*ecvt(v, n, d, s) double v; int *d, *s; { return(); }
+dup2(fildes, fildes2)
+(dtpr 'g_arg)
+(diff ['n_arg1 ... ])
+(delq 'g_val 'l_list ['x_count])
+(cpy1 'xvt_arg)
+(cons 'g_arg1 'g_arg2)
+(cond [l_clause1 ...])
+chan(xd)
+double cabs(z)
+(c..r 'l_arg)
+(bigp 'g_arg)
+(bcdp 'g_arg)
+long atol(nptr)
+(acos 'fx_arg)
+acct(file)
+TAB3     0006000
+TAB2     0004000
+TAB1     0002000
+TAB0     0
+ODDP     0000100 Odd parity allowed on input
+EXTB    15   External B
+EXTA    14   External A
+ECHO     0000010 Echo (full duplex)
+B300    7    300 baud
+B134    4    134.5 baud
+(tyi ['p_port])
+(sum ['n_arg1 ...])
+double pow(x, y)
+(not 'g_arg)
+mpx(name, access) char *name;
+(mod 'i_dividend 'i_divisor)
+(min 'n_arg1 ...)
+(max 'n_arg1 ...)
+(map 'u_func 'l_arg1 ...)
+(log 'fx_arg)
+(get 's_name 'g_ind)
+(fix 'n_arg)
+(exp 'fx_arg)
+(err ???)
+int	dup(f) { return(f); }
+(cos 'fx_angle)
+char	*brk(a) char *a; { return(a); }
+(arg ['x_numb])
+(abs 'n_arg)
+NL2      0001000
+NL0      0
+FF1      0040000
+CR2      0020000
+CR1      0010000
+CR0      0
+(or [g_arg1 ... ])
+(go g_labexp)
+B0      0    (hang up dataphone)
+(1+ 'n_arg)
+(< 'n_arg1 'n_arg2)
+(/ 'n_arg1 'n_arg2)
+(- 'n_arg)
+(+ 'n_arg)
+(* 'n_arg)
+(alphalessp 's_arg1 's_arg2)
+(top-level)
+(showstack)
+(remainder 'i_dividend 'i_divisor)
+(putlength 'a_array 'x_length)
+(mfunction entry 's_disc)
+(get_pname 's_arg)
+(arraydims 's_name)
+(aexplodec 's_arg)
+TIOCFLUSH: All characters waiting in input or output queues are flushed.
+(quotient ['n_arg1 ...])
+char *getlogin();
+(getdelta 'a_array)
+(function u_func)
+datum firstkey();
+int endgrent();
+(dumplisp s_name)
+(baktrace)
+TIOCNXCL: Turn off 'exclusive-use' mode.
+TIOCHPCL: When the file is closed for the last time, hang up.
+TIOCGETP: Fetch the parameters associated with the terminal.
+ALLDELAY 0177400 Delay algorithm selection
+(uconcat ['s_arg1 ... ])
+ttyslot()
+tgetstr(id, area)
+tgetent(bp, name)
+(stringp 'g_arg)
+strcmpn(s1, s2, n)
+(resetio)
+(rematom 's_symb)
+(numberp 'g_arg)
+datum nextkey(key);
+monitor(l, h, b, s, n) int (*l)(), (*h)(); short *b; {}
+isalpha(c)
+char *getpass(prompt)
+(gcafter s_type)
+fprintf( f, s ) FILE *f; char *s; {;}
+(status feature g_val)
+(explode 'g_arg)
+dbminit(file)
+closepl( )
+SIGTRAP 5*   trace trap (not reset when caught)
+SIGQUIT 3*   quit
+SIGPIPE 13   write on a pipe with no one to read it
+SIGALRM 14   alarm clock
+NLDELAY  0001400 Select new-line delays
+(Emuldiv 'x_fact1 'x_fact2 'x_addn 'x_divisor)
+ungetc( c, f ) FILE *f; {  return(c); }
+umount(special)
+int	strcmp(a, b) char *a, *b; { return(1); }
+char	*strcat(a, b) char *a, *b; { ; }
+sscanf( s, f ) char *s, *f; { return(1); }
+setkey(k) char *k; {}
+int	setgid(g) { return(0); }
+rewind(f) FILE *f; {;}
+(random ['x_limit])
+int	ptrace(r, p, a, d) { return(0); }
+(member 'g_arg1 'l_arg2)
+(mapcan 'u_func 'l_arg1 ...)
+(maknam 'l_arg)
+struct	tm *gmtime(c) time_t *c; { return gmtime(c); }
+int	getgid() { return(1); }
+ferror(stream)
+char	*calloc(n,s) unsigned n, s; { static char c[1]; return(c); }
+(boundp 's_name)
+SIGFPE  8*   floating point exception
+(*throw 's_tag 'g_val)
+(*catch 'ls_tag g_exp)
+vfork()
+(throw 'g_val [s_tag])
+tgoto(cm, destcol, destline)
+(terpr ['p_port])
+stime(tp)
+srand(seed)
+(print 'g_arg ['p_port])
+FILE *popen(command, type)
+(plist 's_name)
+(ncons 'g_arg)
+int	mknod(n, m, a) char *n; { return(0); }
+(minus 'n_arg)
+ltol3(cp, lp, n)
+double log10(x)
+label(s) char s[ ];
+ioctl(fildes, request, argp)
+char *index(s, c)
+iargc()
+getpw(uid, buf)
+(fseek 'p_port 'x_offset 'x_flag)
+double frexp(value, eptr)
+double floor(x)
+(float 'n_arg)
+(flatc 'g_form ['x_max])
+int fgetc(stream)
+(ffasl 'st_file 'st_entry 'st_funcname)
+ckill(i, xd, signal)
+(catch g_exp [ls_tag])
+(break [g_message ['g_pred]])
+(apply 'u_func 'l_args)
+int	alarm(s) unsigned s; { return(s); }
+abort() {}
+B9600   13   9600 baud
+B4800   12   4800 baud
+B2400   11   2400 baud
+int	wait(s) int *s; { return(1); }
+swab(from, to, nbytes)
+double sinh(x)
+int	seek(f, o, p) { return(0); }
+putw(w, stream)
+puts(s)
+(putd 's_name 'u_func)
+(prog l_vrbls g_exp1 ...)
+(plus ['n_arg ...])
+int (*outc)();
+int	open(f, m) char *f; { return(0); }
+int	nice(p) { return(0); }
+(list ['g_arg1 ... ])
+int getc(stream)
+int	fork() { return(0); }
+(fake 'x_addr)
+(copy 'g_arg)
+(atom 'g_arg)
+(assq 'g_arg1 'l_arg2)
+B600    8    600 baud
+B150    5    150 baud
+B110    3    110 baud
+(tyo 'x_char ['p_port])
+(def s_name (s_type l_argl g_exp1 ...))
+NL3      0001400
+NL1      0000400
+FF0      0
+CR3      0030000
+BS1      0100000
+BS0      0
+double yn(n, x)
+double y1(x)
+double y0(x)
+double jn(n, x);
+double j1(x)
+double j0(x)
+(gc)
+(eq 'g_arg1 'g_arg2)
+(do s_name g_init g_repeat g_test g_exp1 ...)
+(> 'n_arg1 'n_arg2)
+(= 'g_arg1 'g_arg2)

@@ -1,0 +1,18 @@
+(if (! (is-bound geom-screen))
+(progn
+(declare-global geom-screen)
+(setq geom-screen "mps2")))
+(defun
+(grab-screen
+(string-to-process "rlisp"
+(rlisp-echo
+(concat "<<grab " geom-screen "; "
+"pickScreen " geom-screen " >>$\n"))))
+(drop-screen
+(string-to-process "rlisp"
+(rlisp-echo (concat "drop " geom-screen ";\n"))))
+(grefresh
+(string-to-process "rlisp" (rlisp-echo "grefresh();\n"))))
+(bind-to-key "grab-screen" "\^zg")
+(bind-to-key "drop-screen" "\^zd")
+(bind-to-key "grefresh" "\^zG")

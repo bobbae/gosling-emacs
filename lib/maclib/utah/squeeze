@@ -1,0 +1,143 @@
+(defun
+(Squeeze-com file i
+(setq i 0)
+(while (< i (argc))
+(if (!= (substr (argv i) 1 1) "-")
+(progn
+(setq file (argv i))
+(error-occured
+(visit-file file)
+(squeeze-mlisp-file "")
+(delete-buffer (current-buffer-name)))))
+(setq i (+ i 1)))
+(exit-emacs)))
+(defun
+(squeeze-mlisp-file
+filename
+sfilename
+default-sfilename
+bufname
+sbufname
+fc
+watch
+(setq filename (current-file-name))
+(setq bufname (current-buffer-name))
+(if prefix-argument-provided
+(setq watch 1)
+(setq watch 0))
+(save-restriction old-mod-flag
+(setq old-mod-flag buffer-is-modified)
+(set-mark)
+(narrow-region)
+(insert-string filename)
+(error-occured (search-reverse "/"))
+(if (error-occured (search-forward "."))
+(setq default-sfilename "No default")
+(progn (end-of-line)
+(search-reverse ".")
+(setq default-sfilename
+(region-to-string))))
+(erase-buffer)
+(setq buffer-is-modified old-mod-flag))
+(setq sfilename
+(arg 1
+(concat "File to write out to ["
+default-sfilename "]? ")))
+(if (& (= sfilename "")
+(= default-sfilename "No default"))
+(setq sfilename "/dev/null")
+(setq sfilename default-sfilename))
+(save-window-excursion
+(error-occured
+(visit-file sfilename))
+(setq sbufname
+(current-buffer-name))
+(erase-buffer)
+(yank-buffer bufname)
+(beginning-of-file)
+(while (! (eobp))
+(if watch (sit-for 0))
+(delete-white-space)
+(while (! (eolp))
+(setq fc (following-char))
+(if (= fc '(')
+(forward-character)
+(= fc ')')
+(progn (if (= (preceding-char) '^J')
+(delete-previous-character))
+(forward-character))
+(= fc '"')
+(progn (delete-white-space)
+(if (! (bolp))
+(insert-character ' '))
+(forward-to-double-quote))
+(= fc '\'')
+(progn (delete-white-space)
+(if (! (bolp))
+(insert-character ' '))
+(forward-to-single-quote))
+(| (= fc ' ')
+(= fc '^I'))
+(progn (delete-white-space)
+(if (! (bolp))
+(insert-character ' ')))
+(= fc ';')
+(kill-to-end-of-line)
+(skip-mlisp-word)))
+(delete-white-space)
+(if (= (current-column) 1)
+(error-occured (delete-next-character))
+(error-occured (forward-character))))
+(if (!= (preceding-char) '^J')
+(newline))
+(beginning-of-file)
+(write-named-file sfilename))
+(delete-buffer sbufname)
+(message filename " >>> " sfilename "!")
+(novalue))
+(forward-to-double-quote quote in-string nextchar
+(setq quote '"')
+(setq in-string 1)
+(forward-character)
+(while in-string
+(setq nextchar (following-char))
+(if (error-occured
+(forward-character))
+(error-message "End of buffer found within string!"))
+(if (= nextchar quote)
+(if (= (following-char) quote)
+(forward-character)
+(setq in-string 0))
+(= nextchar 92)
+(forward-character)
+(= nextchar '^J')
+(error-message "Newline found within string!"))))
+(forward-to-single-quote nextchar
+(forward-character)
+(setq nextchar (following-char))
+(if (error-occured (forward-character))
+(error-message
+"End of buffer found in character constant!"))
+(if (= nextchar 92)
+(if (& (>= (following-char) '0')
+(<= (following-char) '9'))
+(while (& (>= (following-char) '0')
+(<= (following-char) '9'))
+(forward-character))
+(if (error-occured (forward-character))
+(error-message
+"End of buffer found in character constant!")))
+(= nextchar '^')
+(if (!= (following-char) '\'')
+(if (error-occured (forward-character))
+(error-message
+"End of buffer found in character constant!"))))
+(if (!= (following-char) '\'')
+(error-message
+"Improper character constant!")
+(forward-character)))
+(skip-mlisp-word
+(if (error-occured
+(re-search-forward "[ \t\n()]"))
+(end-of-line)
+(backward-character))))

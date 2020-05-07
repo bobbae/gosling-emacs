@@ -1,0 +1,1615 @@
+head	1.3;
+access;
+symbols;
+locks; strict;
+comment	@ * @;
+
+
+1.3
+date	93.01.11.13.25.08;	author mogul;	state Exp;
+branches;
+next	1.2;
+
+1.2
+date	86.05.06.14.45.40;	author mcdaniel;	state Exp;
+branches;
+next	1.1;
+
+1.1
+date	86.04.16.13.53.23;	author mcdaniel;	state Exp;
+branches;
+next	;
+
+
+desc
+@@
+
+
+1.3
+log
+@Bug fixes for MIPS, Alpha
+@
+text
+@/* Unix Emacs MLisp (Mock/Minimal Lisp).
+   This atrocity is used for writing extensions to Emacs.
+
+   MLisp is Lisp without the CONS function, and all that that implies.
+   (including the fact that MLisp programs are not MLisp data structures) */
+
+/*		Copyright (c) 1981,1980 James Gosling		*/
+
+/* Modified 8-Sept-81 Jeffrey Mogul (JCM) at Stanford
+ *	- if we can't load "filename", try loading "filename.ml"
+ */
+/* Modified SWT Mon Jul 12 1982 Add variable-apropos */
+/* $Header: /tmp_mnt/r/jove-too/jove_staff3/mogul/alpha/code/emacs/RCS/mlisp.c,v 1.2 1986/05/06 14:45:40 mcdaniel Exp mogul $ */
+/* $Log: mlisp.c,v $
+ * Revision 1.2  1986/05/06  14:45:40  mcdaniel
+ * Merge Titan and Vax versions of emacs. GMcD.
+ *
+ * Revision 1.1  86/04/16  13:53:23  mcdaniel
+ * Initial revision
+ * 
+ */
+
+#include "keyboard.h"
+#include "macros.h"
+#include "buffer.h"
+#include "window.h"
+#include "mlisp.h"
+#include "config.h"
+#include "search.h"
+#include <ctype.h>
+#include <sys/param.h>
+
+char  *malloc(),*realloc(), *getenv();
+
+static int peekc,		/* one character push-back */
+	temp;
+
+static	ForcedInteractive,	/* true iff next ExecProg is interactive */
+	SingleStepExecute;	/* if set, single step ExecProg */
+
+struct ProgNode *StringNode(),*NumberNode(),*ParenNode(),*NameNode();
+
+#define next (peekc?(temp=peekc,peekc=0,temp):(*ReadCharacter)())
+
+
+
+/* ParseNode parses an MLisp program node and returns a pointer to it.
+   0 is returned if the parse was unsuccessful.  Getc is a function to be
+   called to fetch the next character -- it should return -1 on errors. */
+static struct ProgNode *
+ParseNode(ReadCharacter)
+int (*ReadCharacter)();
+{
+    register int   c;
+    while (isspace (c = next) && c >= 0);
+    return
+	c == '('	? ParenNode (ReadCharacter) :
+	c == ';'	? (LispComment(ReadCharacter),
+			   ParseNode(ReadCharacter)) :
+	c<0		? ((peekc=c),
+			   (struct ProgNode *) 0) :
+	c == ')'	? (peekc=c, (struct ProgNode *) 0) :
+	c == '"'	? StringNode (ReadCharacter) :
+	c == '\'' ||
+	c == '-' ||
+	isdigit (c)	? (peekc=c, NumberNode (ReadCharacter)) :
+			  (peekc=c, NameNode (ReadCharacter));
+}
+
+/* LispComment handles lisp style comments */
+LispComment(ReadCharacter)
+int (*ReadCharacter)();
+{
+    register   int c;
+    while ((c = next) > 0 && c != '\n');
+}
+
+/* ParseName parses a name from the MLisp input stream */
+static char *
+ParseName(ReadCharacter)
+int (*ReadCharacter)();
+{
+    static char buf[200];
+    register char  *p;
+    int  c;
+    while (isspace (c = next));
+    p = buf;
+    while (c > 0 && !isspace (c) && c != '(' && c != ')' && c != ';') {
+	*p++ = c;
+	c = next;
+    }
+    peekc = c;
+    *p++ = 0;
+    return buf[0] ? buf : 0;
+}
+
+/* release the tree 'p' */
+LispFree(p)
+register struct ProgNode *p;
+{
+    register int    n;
+    if (p == 0 || p->p_active)	/* Punt freeing actively executing
+				   functions */
+	return;
+    for (n = 0; n < p -> p_nargs; n++)
+	LispFree (p -> p_args[n]);
+    free (p);
+}
+
+/* parse a parenthesised node */
+struct ProgNode *
+ParenNode(ReadCharacter)
+int (*ReadCharacter)();
+{
+    register int   c;
+    register    nargs = 0;
+    struct ProgNode *args[200];	/* alas, yet another hard-wired
+				   limitation! */
+    char   *name = ParseName (ReadCharacter);
+    register struct ProgNode   *p;
+    register struct BoundName *who;
+    int     ind;
+    if (name == (char *)0)
+	return 0;
+    ind = FindMac (name);
+    if (ind < 0) {
+	DefMac (name, 0, 1);
+	ind = FindMac (name);
+	if (ind < 0){
+	    error ("Definition bogosity, defining %s", name);
+	    return 0;
+	}
+    }
+    who = MacBodies[ind];
+    while (!err && (args[nargs] = ParseNode (ReadCharacter)))
+	nargs++;
+    if(peekc==')') peekc = 0;
+    if (peekc < 0)
+	error ("Unexpected EOF  (parens mismatched?)");
+    p = (struct ProgNode   *) malloc (sizeof *p + (nargs - 1) * sizeof p);
+    p -> p_proc = who;
+    p -> p_nargs = nargs;
+    while (--nargs >= 0)
+	p -> p_args[nargs] = args[nargs];
+    return p;
+}
+
+/* execute a number node */
+ExecNumber () {
+    MLvalue -> exp_type = IsInteger;
+    MLvalue -> exp_int = (int) (CurExec -> p_args[0]);
+    return 0;
+}
+
+static struct BoundName BoundNumberNode;
+static struct ProgNode *
+NumberNode (ReadCharacter)
+int (*ReadCharacter)();
+{
+    register struct ProgNode   *p = (struct ProgNode   *) malloc (sizeof *p);
+    register int    n = 0;
+    register int    c = next;
+    if (c == '\'') {
+	char    buf[30];
+	n = 0;
+	buf[0] = next;
+	while (n < 29 && ((buf[++n] = c = next) != '\''
+			  || n==1 && buf[0]=='\\'));
+	buf[n] = 0;
+	if (n>10) goto BadChar;
+	if (n == 1)
+	    n = buf[0];
+	else
+	    if (n == 2 && buf[0] == '^')
+		n = buf[1] & 037;
+	    else
+		if (n == 2 && buf[0] == '\\' && !isdigit (buf[1]))
+		    switch (buf[1]) {
+			default: 
+			    n = buf[1];
+			    break;
+			case 'n': 
+			    n = '\n';
+			    break;
+			case 'b': 
+			    n = '\b';
+			    break;
+			case 't': 
+			    n = '\t';
+			    break;
+			case 'r': 
+			    n = '\r';
+			    break;
+		    }
+		else
+		    if (n > 1 && buf[0] == '\\') {
+			register char  *p = buf + 1;
+			register char  *lim = buf + n;
+			n = 0;
+			while (isdigit (c = *p++))
+			    n = n * 8 + c - '0';
+			if (p <= lim)
+			    goto BadChar;
+		    }
+		    else
+		BadChar: 
+			error ("'%s' is an improper character constant.", buf);
+    }
+    else {
+	register    neg = 0;
+	register    base = 10;
+	if (c == '-')
+	    neg++, c = next;
+	if (c == '0')
+	    base = 8;
+	while (isdigit (c)) {
+	    n = n * base + c - '0';
+	    c = next;
+	}
+	if (neg)
+	    n = -n;
+	peekc = c;
+    }
+    p -> p_proc = &BoundNumberNode;
+    p -> p_nargs = 0;
+    p -> p_args[0] = (struct ProgNode  *) n;
+    return p;
+}
+
+static
+ExecString () {
+    MLvalue -> exp_type = IsString;
+    MLvalue -> exp_int = (int) CurExec -> p_args[0];
+    MLvalue -> exp_v.v_string = (char *) & CurExec -> p_args[1];
+    return 0;
+}
+
+static struct BoundName BoundStringNode;
+struct ProgNode *
+StringNode (ReadCharacter)
+int (*ReadCharacter)();
+{
+    register char  *p;
+    int  c;
+    char    buf[300];
+    register struct ProgNode   *r;
+    p = buf;
+    while ((c = next) > 0) {
+	if (c == '\\')
+	    switch (c = next) {
+	    case 'n':
+		c = '\n';
+		break;
+	    case 'b':
+		c = '\b';
+		break;
+	    case 'r':
+		c = '\r';
+		break;
+	    case 't':
+		c = '\t';
+		break;
+	    case 'e':
+		c = '\033';
+		break;
+	    case '^':
+		c = next & 037;
+		break;
+	    default:
+		if ('0'<=c && c<='7') {
+		    register nc = 0;
+		    register cnt = 3;
+		    do nc = nc*8 + c-'0';
+		    while (--cnt>0 && '0'<=(c=next) && c<='7');
+		    if (cnt>0) peekc = c;
+		    c = nc;
+		}
+	    }
+	else if (c == '"' && (c = next) != '"') {
+	    peekc = c;
+	    break;
+	}
+	if (p >= &buf[sizeof buf / sizeof buf[0]]) {
+	    error ("Unterminated string constant");
+	    return 0;
+	}
+	*p++ = c;
+    }
+    *p++ = '\0';
+    r = (struct ProgNode   *) malloc (sizeof *r + p - buf);
+    r -> p_proc = &BoundStringNode;
+    r -> p_nargs = 0;
+    r -> p_args[0] = (struct ProgNode  *) (p - buf - 1);
+    strcpyn ((char *)(r -> p_args + 1), buf, p - buf);
+    return r;
+}
+
+/* ACT 17-Oct-1982 upgraded for single-step */
+
+ExecProg (p)
+register struct ProgNode *p;
+{
+    struct ProgNode *old = CurExec;
+    int OldLastArg = LastArgUsed;
+    int OldSingleStep = SingleStepExecute;
+    register    rv = 0;
+    register int WasActive;
+    if (err)
+	return 0;
+    ReleaseExpr (MLvalue);
+    MLvalue = &GlobalValue;
+    GlobalValue.exp_type = IsVoid;
+    if (p == 0) {
+	if (old)
+	    error ("\"%s\" has not been defined yet.",
+		   old -> p_proc -> b_name);
+	else
+	    error ("Attempt to execute an undefined MLisp function.");
+	return 0;
+    }
+    if (SingleStepExecute & 2) {
+	register struct buffer *b = bf_cur;
+
+	SetBfn ("Trace Buffer");
+	InsCStr ("About to execute \"", 18);
+	InsStr (p -> p_proc -> b_name);
+	InsCStr ("\"", 1);
+	SetBfp (b);
+    }
+    if (SingleStepExecute & 1) {
+retell:
+	CurExec = 0;
+	message ("Single Step Mode: about to execute \"%s\"",
+		p -> p_proc -> b_name);
+again:
+	switch (GetChar ()) {
+	case ' ':
+	    break;
+	case '!':
+	    OldSingleStep = 0;
+	case 's':
+	    SingleStepExecute = 0;
+	    break;
+	case 'r':
+	    CurExec = old;
+	    SingleStepExecute = 0;
+	    RecursiveEdit ();
+	    SingleStepExecute = 1;
+	    goto retell;
+	case 'x':
+	    SingleStepExecute = 0;
+	    ExecuteExtendedCommand ();
+	    SingleStepExecute = 1;
+	    goto again;
+	case (Ctl ('G')):
+	    if (SingleStepExecute & 2) {
+		register struct buffer *b = bf_cur;
+
+		SetBfn ("Trace Buffer");
+		InsCStr (" Aborted\n", 9);
+		SetBfp (b);
+	    }
+	    goto out;
+	case '=':
+	    goto retell;
+	default:
+	    message ("Options: ' '=>step; 's'=>superstep; 'r'=>recursive edit; '!'=>go; '^G'=>skip");
+	    goto again;
+	}
+/* This message only comes out if no one overwrites it */
+	message ("Single Step Done");
+    }
+    if (SingleStepExecute & 2) {
+	register struct buffer *b = bf_cur;
+
+	SetBfn ("Trace Buffer");
+	InsCStr ("\n", 1);
+	SetBfp (b);
+    }
+    WasActive = p->p_active;
+    p->p_active = 1;
+    CurExec = ForcedInteractive ? 0 : p;
+    ForcedInteractive = 0;
+    LastArgUsed = -1;
+
+    rv = ExecuteBound (p -> p_proc);
+
+    p->p_active = WasActive;
+    LastArgUsed = OldLastArg;
+out:
+    CurExec = old;
+    ForcedInteractive = 0;	/* yes, you need this one too */
+    SingleStepExecute = OldSingleStep;
+    return rv;
+}
+
+static bufpos;
+static char getbufc () {
+    register char   c;
+    if (bufpos > NumCharacters)
+	return - 1;
+    c = CharAt (bufpos);
+    bufpos++;
+    return c;
+}
+
+ExecuteMLispBuffer () {
+    int rv;
+    bufpos = 1;
+    rv = ExecuteMLispSomething (getbufc);
+    if(err) SetDot (bufpos-1);
+    return rv;
+}
+
+static char MLline[200];
+static char
+GetLineChar () {
+    return MLline[bufpos] ? MLline[bufpos++] : -1;
+}
+
+ExecuteMLispLine () {
+    register char  *s = getstr (": execute-mlisp-line ");
+    int rv = 0;
+    if (s) {
+	bufpos = 0;
+	strcpyn (MLline, s, sizeof MLline / sizeof MLline[0]);
+	rv = ExecuteMLispSomething (GetLineChar);
+	if (interactive) {
+	    if (MLvalue -> exp_type == IsInteger)
+		message ("%s => %d", MLline, MLvalue -> exp_int);
+	    else
+		if (MLvalue -> exp_type == IsString)
+		    message ("%s => \"%s\"", MLline, MLvalue -> exp_v.v_string);
+	    ReleaseExpr (MLvalue);
+	    MLvalue -> exp_type = IsVoid;
+	}
+    }
+    return rv;
+}
+
+static struct BoundName *ProgNblock;
+static struct BoundName BoundVariableNode;
+
+ProgN () {
+    register struct ProgNode   *p = CurExec;
+    int     i,
+            rv = 0;
+    if (p == 0)
+	error ("progn can only appear in mlisp statements");
+    else {
+	register struct VariableName   *v;
+	register struct Binding *b;
+	for (i = 0; i < p -> p_nargs && p -> p_args[i] -> p_proc == &BoundVariableNode; i++)
+	    Declare (p -> p_args[i] -> p_args[0], 0);
+	while (!err && rv == 0 && i < p -> p_nargs)
+	    rv = ExecProg (p -> p_args[i++]);
+	for (i = 0; i < p -> p_nargs && p -> p_args[i] -> p_proc == &BoundVariableNode; i++) {
+	    v = (struct VariableName   *) (p -> p_args[i] -> p_args[0]);
+	    b = v -> v_binding;
+	    ReleaseExpr (b->b_exp);
+	    free (b->b_exp);
+	    b = b -> b_inner;
+	    free (v -> v_binding);
+	    v -> v_binding = b;
+	}
+    }
+    return rv;
+}
+
+static
+DeclareGlobal () {
+    if (CurExec == 0)
+	error ("declare-global can only appear in mlisp statements");
+    else
+	PerformDeclare (0);
+    return 0;
+}
+
+static
+DeclareBufferSpecific () {
+    if (CurExec == 0)
+	error ("declare-buffer-specific can only appear in mlisp statements");
+    else
+	PerformDeclare (1);
+    return 0;
+}
+
+static
+PerformDeclare (BufferSpecific) {
+    register struct ProgNode   *p = CurExec;
+    register i;
+    register struct VariableName   *v;
+    register struct Binding *b;
+    for (i = 0; i < p -> p_nargs
+	    && p -> p_args[i] -> p_proc == &BoundVariableNode; i++) {
+	v = (struct VariableName   *) (p -> p_args[i] -> p_args[0]);
+	if (v -> v_binding == 0 || BufferSpecific)
+	    Declare (v, BufferSpecific);
+    }
+}
+
+Declare (v, BufferSpecific)
+register struct VariableName   *v; {
+    register struct Binding *b;
+    if (v -> v_binding == 0 || !BufferSpecific) {
+	b = (struct Binding *) malloc (sizeof *b);
+	b -> b_exp = (Expression *) malloc (sizeof (Expression));
+	b -> b_exp -> exp_type = IsInteger;
+	b -> b_exp -> exp_refcnt = 1;
+	b -> b_exp -> exp_int = 0;
+	b -> b_exp -> exp_v.v_string = (char *) - 1;
+	b -> b_inner = v -> v_binding;
+	v -> v_binding = b;
+	b -> IsSystem = 0;
+    }
+    else {
+	b = v -> v_binding;
+	while (b -> b_inner)
+	    b = b -> b_inner;
+	if (b -> IsSystem)
+	    return;
+    }
+    b -> BufferSpecific = BufferSpecific;
+    b -> IsDefault = BufferSpecific;
+}
+
+static
+IsBound () {
+    register struct ProgNode   *p = CurExec;
+    int     i;
+    if (p == 0)
+	error ("is-bound can only appear in mlisp statements");
+    else {
+	register struct VariableName   *v;
+	register struct Binding *b;
+	MLvalue -> exp_type = IsInteger;
+	MLvalue -> exp_int = 1;
+	for (i = 0; i < p -> p_nargs && p -> p_args[i] -> p_proc == &BoundVariableNode; i++) {
+	    v = (struct VariableName   *) (p -> p_args[i] -> p_args[0]);
+	    if (!v -> v_binding) {
+		MLvalue -> exp_int = 0;
+		break;
+	    }
+	}
+    }
+    return 0;
+}
+
+static
+ErrorOccured () {
+    register rv = ProgN ();
+    ReleaseExpr (MLvalue);
+    MLvalue -> exp_type = IsInteger;
+    MLvalue -> exp_int = err!=0;
+    err = 0;
+    MiniBuf = "";
+    return rv;
+}
+
+static
+PrefixArgumentLoop () {
+    register int rv = 0;
+    register int ctr = ExecutionRoot.PrefixArgument;
+    while (--ctr>=0 && !err && rv==0)
+	rv = ProgN ();
+    return rv;
+}
+
+int dbg_layout;				/* for a while, anyway */
+
+static
+SaveWindowExcursion ()
+{
+
+#define SaveSize 30
+
+    int     WinSize[SaveSize], rv, current = -1;
+    register    k,
+                nsaved;
+    struct marker * WinMark[SaveSize],
+		  * WinTop[SaveSize];
+    register struct window *w, *nextw;
+    register struct buffer *old = bf_cur;
+
+    for (nsaved = 0, w = windows; w->w_next && nsaved < SaveSize;
+	    w = w->w_next, nsaved++)
+    {
+	WinSize[nsaved] = w->w_height;
+	if (w == wn_cur)
+	    current = nsaved;
+	WinMark[nsaved] = NewMark();
+	SetMark(WinMark[nsaved], w->w_buf, ToMark(w->w_dot));
+	WinTop[nsaved] = NewMark();
+	SetMark(WinTop[nsaved], w->w_buf, ToMark(w->w_start));
+	if (dbg_layout)
+	    fprintf (stderr, "window %d, height %d, dot %d, st %d\n\r",
+		nsaved,w->w_height, ToMark(w->w_dot), ToMark(w->w_start));
+    }
+
+    rv = SaveExcursion ();
+    k = 0;
+    for (w = windows; nextw = w->w_next; w = nextw)
+    {
+	if (k >= nsaved)
+	    DelWin (w);
+	k++;
+    }
+    while (k < nsaved)
+    {
+	SplitLargestWindow ();
+	k++;
+    }
+
+    for (k = 0, w = windows; k < nsaved; k++, w = w->w_next)
+    {
+	ChgWHeight (w, WinSize[k] - w->w_height, 0);
+	TieWin (w, WinTop[k] -> m_buf);
+	/* Position first line in window */
+	SetMark (w->w_start, w->w_buf, ToMark(WinTop[k]));
+	DestMark( WinTop[k] );
+	dot = ToMark(WinMark[k]);
+	SetMark(w->w_dot, w->w_buf, dot);
+	DestMark(WinMark[k]);
+	if (dbg_layout)
+	    fprintf (stderr, "Set size for window %d (buf %s) to %d, dot %d\n\r",
+		    k, w->w_buf->b_name, w->w_height, dot);
+    }
+
+    if (current == -1)
+    {
+	for ( w = windows; w->w_next; w = w->w_next )
+	    ;
+	SetWin(w);			/* in minibuffer */
+    }
+    else
+	for (k=0, w=windows; k < nsaved; k++, w = w->w_next)
+	    if (k == current)
+		SetWin (w);
+
+    return rv;
+}
+
+static
+OldSaveWindowExcursion () {
+
+/*#define SaveSize 20*/
+
+    struct buffer  *SavedBuffers[SaveSize];
+    char    StillVisible[SaveSize];
+    char    HasGood[SaveSize];
+    register    i,
+                nsaved = 0;
+    register struct window *w;
+    register struct buffer *old = bf_cur;
+    int     rv,
+            k;
+    int     BufferVisible = wn_cur -> w_buf == bf_cur;
+    for (w = windows; w -> w_next; w = w -> w_next) {
+	for (i = 0; i < nsaved && SavedBuffers[i] != w -> w_buf; i++);
+	if (i >= nsaved)
+	    SavedBuffers[nsaved++] = w -> w_buf;
+    }
+    for (i = 0; i < nsaved; i++)
+	StillVisible[i] = 0;
+    rv = SaveExcursion ();
+    k = 0;
+    for (w = windows; w -> w_next; w = w -> w_next) {
+	HasGood[k] = 0;
+	for (i = 0; i < nsaved; i++)
+	    if (SavedBuffers[i] == w -> w_buf)
+		StillVisible[i]++, HasGood[k]++;
+	k++;
+    }
+    k = 0;
+    for (w = windows; w -> w_next;) {
+	register struct window *nextw = w -> w_next;
+	if (!HasGood[k]) {
+	    for (i = 0; i < nsaved; i++)
+		if (!StillVisible[i]) {
+		    StillVisible[i]++;
+		    TieWin (w, SavedBuffers[i]);
+		    break;
+		}
+	    if (i >= nsaved)
+		DelWin (w);
+	}
+	k++;
+	w = nextw;
+    }
+    for (i = 0; i < nsaved; i++)
+	if (!StillVisible[i]) {
+	    SplitLargestWindow ();
+	    WindowOn (SavedBuffers[i]);
+	}
+    SetBfp (old);
+    if (BufferVisible)
+	WindowOn (bf_cur);
+    return rv;
+}
+
+static
+SaveExcursion () {
+    register struct marker *olddot = NewMark ();
+    register struct marker *oldmark = 0;
+    register struct buffer *oldbuf = bf_cur;
+    int BufferVisible = wn_cur->w_buf == bf_cur;
+    register    rv;
+    struct search_globals lglobals;
+
+    SetMark (olddot, bf_cur, dot);
+    if (bf_cur -> b_mark) {
+	oldmark = NewMark ();
+	SetMark (oldmark, bf_cur, ToMark (bf_cur -> b_mark));
+    }
+    lglobals = search_globals;
+    rv = ProgN ();
+    search_globals = lglobals;
+    SetBfp (oldbuf);
+    if(BufferVisible) WindowOn (bf_cur);
+    dot = ToMark (olddot);
+    if (oldmark) {
+	SetMark (bf_cur -> b_mark, bf_cur, ToMark (oldmark));
+	DestMark (oldmark);
+    }
+    DestMark (olddot);
+    return rv;
+}
+
+static
+If () {
+    register    i;
+    if (CheckArgs (2, 0))
+	return 0;
+    for (i = 0; !err && i + 1 < CurExec -> p_nargs; i += 2)
+	if (NumericArg (i + 1))
+	    return ExecProg (CurExec -> p_args[i + 1]);
+    return !err && i < CurExec -> p_nargs
+	? ExecProg (CurExec -> p_args[i]) : 0;
+}
+
+static
+While () {
+    register    i, rv = 0;
+    if (CheckArgs (2, 0))
+	return 0;
+    while (!err && rv==0
+	    && (rv=ExecProg (CurExec -> p_args[0]))==0
+	    && MLvalue -> exp_type == IsInteger
+	    && MLvalue -> exp_int
+	    && !err)
+	for (i = 1; rv==0 && i < CurExec -> p_nargs && !err; i++)
+	    rv = ExecProg (CurExec -> p_args[i]);
+    return rv;
+}
+
+static
+InsertString () {
+    if (CurExec) {
+	register    i = 1;
+	while (i <= CurExec -> p_nargs && StringArg (i)) {
+	    InsCStr (MLvalue -> exp_v.v_string, MLvalue -> exp_int);
+	    i++;
+	}
+    }
+    else {
+	register char  *s = getstr (": insert-string ");
+	if (s == 0)
+	    return 0;
+	InsStr (s);
+    }
+    return 0;
+}
+
+static
+Message () {
+    Concat ();
+    if (err)
+	return 0;
+    CurExec = 0;
+    if(!err)
+	message ("%s", MLvalue -> exp_v.v_string);
+    VoidResult ();
+    return 0;
+}
+
+static
+SendStringToTerminal () {
+    register char *s = getstr (": send-string-to-terminal ");
+    if(s) printf ("%s", s);
+    VoidResult ();
+    return 0;
+}
+
+static
+ErrorMessage () {
+    Concat ();
+    if (err)
+	return 0;
+    error ("%s", MLvalue -> exp_v.v_string);
+    VoidResult ();
+    return 0;
+}
+
+static
+ExecuteMLispSomething (ReadCharacter)
+int (*ReadCharacter)();
+{
+    register struct ProgNode   *p;
+    int rv;
+    peekc = 0;
+    if ((p = ParseNode (ReadCharacter)) == 0)
+	return;
+    rv = ExecProg (p);
+    LispFree (p);
+    return rv;
+}
+
+static FILE *MLispIn;
+
+static ReadMLispFileCharacter() {
+    return getc(MLispIn);
+}
+
+ExecuteMLispFile (fn, MissingOK)
+char *fn;
+{
+    static char *path;
+    register int c;
+    char    fnb[MAXPATHLEN];
+    FILE * old = MLispIn;
+    register rv = 0;
+    if (path == 0) {
+	FluidStatic(&path, sizeof(path));
+	path = (char *) getenv ("EPATH");
+	if (path == 0)
+	    path = PATH_LOADSEARCH;
+    }
+    peekc = 0;
+    if ((MLispIn = fopenp (path, fn, fnb, "r")) == NULL){
+    	/* couldn't open fn; let's try fn.ml */
+	char Xfn[MAXPATHLEN];
+	strcpy(Xfn,fn);
+	strcat(Xfn,".ml");
+	MLispIn = fopenp (path, Xfn, fnb, "r");
+    }
+    
+    if (MLispIn == NULL) {
+    	/* still null?  Guess file isn't there */
+	if(!MissingOK) error ("Can't read %s", fn);
+	rv++;
+	peekc = -1;
+    }
+    else
+	peekc = getc (MLispIn);
+    if (peekc == '\033')
+	LoadFile (fn);
+    else
+	while (peekc >= 0 && !err) {
+	    register struct ProgNode   *p;
+	    p = ParseNode (ReadMLispFileCharacter);
+	    if (p == 0)
+		break;
+	    ExecProg (p);
+	    LispFree (p);
+	    while (isspace (c = getc (MLispIn)) && c > 0);
+	    peekc = c;
+	};
+    if (MLispIn)
+	fclose (MLispIn);
+    MLispIn = old;
+    return rv | err;
+}
+
+static
+ExecuteMLispFileTOP () {
+    register char *s = getstr(": execute-mlisp-file ");
+    if(s) ExecuteMLispFile (s, 0);
+}
+
+/* release the storage associated with an expression */
+DoRelease (e)
+register Expression *e; {
+    if (e -> exp_release) {
+	switch (e -> exp_type) {
+	    case IsString: 
+		free (e -> exp_v.v_string);
+		e -> exp_v.v_string = 0;
+	    default: 
+		break;
+	    case IsMarker: 
+		DestMark (e -> exp_v.v_marker);
+		e -> exp_v.v_marker = 0;
+		break;
+	}
+	e -> exp_release = 0;
+    }
+}
+
+static
+DefineFunction () {
+    register struct ProgNode *p;
+    register struct BoundName  *b;
+    register int    i;
+    if (CheckArgs (1, 0))
+	return 0;
+    for (i = 0; i < CurExec -> p_nargs; i++)
+	if (p = CurExec -> p_args[i]) {
+	    CurExec -> p_args[i] = 0;
+	    b = p -> p_proc;
+	    if (b -> b_binding == MLispBound)
+		LispFree (b -> b_bound.b_prog);
+	    else
+		if (b -> b_binding == MacroBound
+			|| b -> b_binding == AutoLoadBound) {
+		    free (b -> b_bound.b_body);
+		    b -> b_binding = MLispBound;
+		}
+		else {
+		    error ("\"%s\" is bound to a wired procedure and cannot be rebound!", b -> b_name);
+		    continue;
+		}
+	    b -> b_bound.b_prog = p;
+	    p -> p_proc = ProgNblock;
+	}
+    return 0;
+}
+
+struct VariableName *Lookup (name)
+char *name;
+{
+    register    i;
+    char   *p1,
+           *p2;
+    for (i = 0; i < NVars; i++) {
+	p1 = VarNames[i];
+	p2 = name;
+	while (*p2 && *p1 == *p2)
+	    p1++, p2++;
+	if ((*p1 | *p2) == 0)	/* *p1==0 && *p2==0 */
+	    return VarDesc[i];
+    }
+    return 0;
+}
+
+static				/* define a varible name given the string
+				   name and a pointer to the descriptor
+				   record */
+Define(name,desc)
+char *name;
+struct VariableName *desc;
+{
+    if (NVars >= VarTSize-1)	/* enlarge the string table */
+	if (VarTSize==0) {
+	    VarNames = (char **) malloc ((VarTSize = 50) * sizeof *VarNames);
+	    VarDesc = (struct VariableName **)
+		malloc (VarTSize * sizeof *VarDesc);
+	}
+	else {
+	    VarNames = (char **)
+		realloc((char *)VarNames,(VarTSize += 50)*sizeof *VarNames);
+	    VarDesc = (struct VariableName **)
+		realloc ((char *)VarDesc, VarTSize * sizeof *VarDesc);
+	}
+    VarNames[NVars] = name;
+    VarDesc[NVars] = desc;
+    NVars++;
+    VarDesc[NVars] = 0;
+    VarNames[NVars] = 0;
+}
+
+static struct ProgNode *	/* parse a name token in an MLisp program */
+NameNode (ReadCharacter)
+int (*ReadCharacter)(); {
+    register struct ProgNode   *p = (struct ProgNode   *) malloc (sizeof *p);
+    register char  *name = ParseName (ReadCharacter);
+    register struct VariableName   *v;
+    if ((v = Lookup (name)) == 0) {
+	v = (struct VariableName   *) malloc (sizeof *v);
+	Define (v -> v_name = savestr (name), v);
+	v -> v_binding = 0;
+    }
+    p -> p_nargs = 0;
+    p -> p_args[0] = (struct ProgNode  *) v;
+    p -> p_proc = &BoundVariableNode;
+    return p;
+}
+
+struct Binding *ResolveBufferSpecific (b)
+register struct Binding *b; {
+    if (b -> BufferSpecific) {
+	while (b && !b -> IsDefault && b -> BufferSpecific
+		&& b -> b.b_LocalTo != bf_cur)
+	    b = b -> b_inner;
+	if (!b || !b -> BufferSpecific) {
+	    error ("Error resolving buffer-specific variable (internal error)");
+	    return 0;		/* This should never happen! */
+	}
+    }
+    return b;
+}
+
+struct Binding *ResolveBufferSpecificAssignment (b, v)
+register struct Binding *b;
+register struct VariableName *v; {
+    if ((b = ResolveBufferSpecific (b)) == 0)
+	return 0;
+    if (b -> IsDefault) {
+	b = (struct Binding *) malloc (sizeof *b);
+	b -> b_exp = (Expression *) malloc (sizeof (Expression));
+	b -> b_exp -> exp_type = IsInteger;
+	b -> b_exp -> exp_int = 0;
+	b -> b_exp -> exp_refcnt = 1;
+	b -> IsSystem = 0;
+	b -> BufferSpecific = 1;
+	b -> IsDefault = 0;
+	b -> b.b_LocalTo = bf_cur;
+	b -> b_exp -> exp_v.v_string = (char *) - 1;
+	b -> b_inner = v -> v_binding;
+	v -> v_binding = b;
+    }
+    return b;
+}
+
+ExecVariable () {
+    register struct VariableName   *v =
+                                    (struct VariableName   *) (CurExec -> p_args[0]);
+    register struct Binding *b;
+    if ((b = v -> v_binding) == 0)
+	error ("Reference to an unbound variable: \"%s\"", v -> v_name);
+    else {
+	if (b -> BufferSpecific && (b = ResolveBufferSpecific (b)) == 0)
+	    return 0;
+	MLvalue -> exp_type = b -> b_exp -> exp_type;
+	MLvalue -> exp_int = b -> b_exp -> exp_int;
+	switch (MLvalue -> exp_type) {
+	    case IsString: 
+		MLvalue -> exp_release = 1;
+		MLvalue -> exp_v.v_string =
+		    (char *) malloc (MLvalue -> exp_int + 1);
+/*!*/		cpyn (MLvalue -> exp_v.v_string,
+			b -> b_exp -> exp_v.v_string, MLvalue -> exp_int + 1);
+		if (b -> IsSystem)
+		    MLvalue -> exp_int =
+			strlen (MLvalue -> exp_v.v_string);
+		break;
+	    case IsInteger: 
+		MLvalue -> exp_release = 0;
+		MLvalue -> exp_v.v_string = 0;
+		if (b -> IsSystem)
+		    MLvalue -> exp_int = *(int *) b -> b_exp -> exp_v.v_string;
+		break;
+	    case IsMarker: 
+		MLvalue -> exp_release = 1;
+		MLvalue -> exp_v.v_marker =
+		    CopyMark (NewMark (), b -> b_exp -> exp_v.v_marker);
+		break;
+	    default: 
+		error ("Variable \"%s\" has a bizarre type!", v -> v_name);
+	}
+    }
+    return 0;
+}
+
+static
+SetQ () {
+    return DoSetQ (0);
+}
+
+static
+SetQDefault () {
+    return DoSetQ (1);
+}
+
+static
+DoSetQ (Default) {
+    register    n;
+    register struct ProgNode   *p;
+    register struct Binding *b;
+    if (CheckArgs (2, 2))
+	return 0;
+    if ((p = CurExec -> p_args[0]) -> p_proc != &BoundVariableNode)
+	error ("setq expects its first argument to be a variable name.");
+    else
+	PerformSet (p -> p_args[0], 2, 0, Default);
+    return 0;
+}
+
+Set () {
+    return DoSet (0);
+}
+
+SetDefault () {
+    return DoSet (1);
+}
+
+DoSet (Default) {
+    register    n;
+    register char  *p;
+    register struct VariableName   *v;
+    if (VarNames == 0) {
+	error ("You've got to be kidding...");
+	return 0;
+    }
+    if (Default) {
+	register char  *name = getstr (": set-default ");
+	if (name == 0)
+	    return 0;
+	if ((v = Lookup (name)) == 0) {
+	    v = (struct VariableName   *) malloc (sizeof *v);
+	    Define (v -> v_name = savestr (name), v);
+	    v -> v_binding = 0;
+	}
+    }
+    else {
+	n = getword (VarNames, ": set ");
+	if (n < 0)
+	    return 0;
+	v = VarDesc[n];
+    }
+    p = getstr (": set%s %s ", Default ? "-default" : "", v->v_name);
+    if (p == 0)
+	return 0;
+    PerformSet (v, 0, p, Default);
+    return 0;
+}
+
+/* Assign the arg'th expression to v, if arg==0 then the string
+   "svalue" will be used */
+PerformSet (v, arg, svalue, SettingDefault)
+register struct VariableName *v;
+char   *svalue; {
+    register struct Binding *b = v -> v_binding;
+    if (SettingDefault && b==0) {
+	Declare (v, 0);
+	b = v -> v_binding;
+    }
+    if (b == 0) {
+	error ("Attempt to set the unbound variable \"%s\"", v -> v_name);
+	return;
+    }
+    if (SettingDefault) {
+	while (b -> b_inner && !b -> IsDefault) b = b -> b_inner;
+	if (b -> IsSystem && b -> b.b_Default) b = b -> b.b_Default;
+    }
+    if (b -> IsSystem) {
+	if (b -> b_exp -> exp_type == IsInteger) {
+	    extern DefaultTabSize;/* Sigh, I hate to put in such cross module
+				     references! */
+	    *(int *) b -> b_exp -> exp_v.v_string =
+		arg ? NumericArg (arg) : StrToInt (svalue);
+	    			/* A good general mechanism for doing
+				   validity checks on the values of system
+				   variables needs to exist... */
+	    if (bf_mode.md_TabSize<=0 || DefaultTabSize<=0) {
+		if (bf_mode.md_TabSize<=0)
+		    bf_mode.md_TabSize = 8;
+		else
+		    DefaultTabSize = 8;
+		error ("Tab sizes <= 0 are unacceptable.");
+	    }
+	} else
+	    if (arg==0 || StringArg (arg)) {
+/*!*/		cpyn (b -> b_exp -> exp_v.v_string,
+			arg ? MLvalue -> exp_v.v_string : svalue,
+			(MLvalue->exp_int < b -> b_exp->exp_int) ?
+/*cak*/			 MLvalue->exp_int+1 : b->b_exp->exp_int );
+		b -> b_exp -> exp_v.v_string[b -> b_exp -> exp_int - 1]
+		    = 0;
+	    }
+	Cant1WinOpt++;
+	bf_cur -> b_mode = bf_mode;
+    }
+    else {
+	if (b -> BufferSpecific && !SettingDefault
+		&& (b = ResolveBufferSpecificAssignment (b, v)) == 0)
+	    return 0;
+	if (arg == 0) {
+	    ReleaseExpr (b -> b_exp);
+	    b -> b_exp -> exp_int = strlen (svalue);
+	    b -> b_exp -> exp_type = IsString;
+	    b -> b_exp -> exp_v.v_string = savestr (svalue);
+	    b -> b_exp -> exp_release = 1;
+	}
+	else {
+	    if (!EvalArg (2))
+		return 0;
+	    ReleaseExpr (b -> b_exp);
+	    b -> b_exp -> exp_int = MLvalue -> exp_int;
+	    b -> b_exp -> exp_type = MLvalue -> exp_type;
+	    switch (MLvalue -> exp_type) {
+		case IsString: 
+		    if (MLvalue -> exp_release) {
+			MLvalue -> exp_release = 0;
+			b -> b_exp -> exp_v.v_string = MLvalue -> exp_v.v_string;
+		    }
+		    else
+			b -> b_exp -> exp_v.v_string =
+			    savestr (MLvalue -> exp_v.v_string);
+		    b -> b_exp -> exp_release = 1;
+		    break;
+		case IsMarker: 
+		    if (MLvalue -> exp_release) {
+			b -> b_exp -> exp_v.v_marker = MLvalue -> exp_v.v_marker;
+			MLvalue -> exp_release = 0;
+		    }
+		    else
+			b -> b_exp -> exp_v.v_marker =
+			    CopyMark (NewMark (), MLvalue -> exp_v.v_marker);
+		    b -> b_exp -> exp_release = 1;
+		    break;
+		default: 
+		    b -> b_exp -> exp_v.v_string = 0;
+		    b -> b_exp -> exp_release = 0;
+	    }
+	}
+    }
+}
+
+static
+Print () {
+    register    n;
+    register struct Binding *b;
+    if (VarNames == 0)
+	error ("You've got to be kidding!");
+    else {
+	n = getword (VarNames, ": print ");
+	if (n >= 0) {
+	    b = VarDesc[n] -> v_binding;
+	    if (b -> BufferSpecific) b = ResolveBufferSpecific (b);
+	    if (b == 0)
+		error ("%s isn't bound to a value.", VarNames[n]);
+	    else
+		switch (b -> b_exp -> exp_type) {
+		    case IsInteger: 
+			message (": print %s => %d", VarNames[n],
+				b -> IsSystem ? *(int *) b -> b_exp -> exp_v.v_string
+				: b -> b_exp -> exp_int);
+			break;
+		    case IsString: 
+			message (": print %s => \"%s\"",
+				VarNames[n], b -> b_exp -> exp_v.v_string);
+			break;
+		    case IsMarker: {
+			    register struct marker *m = b -> b_exp -> exp_v.v_marker;
+			    if (m) {
+			        register struct buffer *old = bf_cur;
+				message (": print %s => Marker (\"%s\", %d)",
+					VarNames[n],
+					m -> m_buf -> b_name,
+					ToMark (m));
+				SetBfp (old);
+				break;
+			    }
+			}
+		    default: 
+			error (": print %s => Something very odd!",
+				VarNames[n]);
+		}
+	}
+    }
+    return 0;
+}
+
+VariableApropos () {
+    register char  *keyword = getnbstr (": variable-apropos keyword: ");
+    register struct buffer *old = bf_cur;
+    register    i;
+    char    buf[4000];
+    if (keyword == 0)
+	return 0;
+    SetBfn ("Help");
+    WindowOn (bf_cur);
+    WidenRegion ();
+    EraseBf (bf_cur);
+    for (i = 0; VarNames[i]; i++)
+	if (sindex (VarNames[i], keyword)) {
+	    register struct Binding *b;
+	    register struct buffer *help = bf_cur;
+
+	    SetBfp (old);
+	    b = VarDesc[i] -> v_binding;
+	    if (b -> BufferSpecific)
+		b = ResolveBufferSpecific (b);
+	    if (b == 0)
+		sprintfl (buf, sizeof buf,"%-34s [Unbound]\n",
+			VarNames[i]);
+	    else
+	    {
+		switch (b -> b_exp -> exp_type) {
+		    case IsInteger: 
+			sprintfl (buf, sizeof buf, "%-34s = %d\n",
+				VarNames[i],
+				b -> IsSystem ? *(int *) b -> b_exp -> exp_v.v_string
+				: b -> b_exp -> exp_int);
+			break;
+		    case IsString: 
+		    {
+			char str[50];
+			register char *cp, *sp;
+
+			for (cp = b -> b_exp -> exp_v.v_string, sp = str;
+				*cp && sp < str + 40; cp++, sp++)
+			{
+			    if (CtlArrow && (*cp < 040 || *cp == 0177))
+			    {
+				*sp++ = '^';
+				*sp = *cp ^ 0100;
+			    }
+			    else if (*cp < 040 || *cp == 0177)
+			    {
+				*sp++ = '\\';
+				*sp++ = ((((int) *cp) & 0300) >> 6) + '0';
+				*sp++ = ((*cp & 070) >> 3) + '0';
+				*sp = (*cp & 07) + '0';
+			    }
+			    else
+				*sp = *cp;
+			}
+			*sp = 0;
+			sprintfl (buf, sizeof buf, "%-34s = \"%.40s\"\n",
+				VarNames[i], str);
+			break;
+		    }
+		    case IsMarker: {
+			    register struct marker *m = b -> b_exp -> exp_v.v_marker;
+			    if (m) {
+				sprintfl (buf, sizeof buf,
+					"%-34s = Marker (\"%s\", %d)\n",
+					VarNames[i],
+					m -> m_buf -> b_name,
+					ToMark (m));
+				SetBfp (help);
+				break;
+			    }
+			}
+		    default: 
+			sprintfl (buf, sizeof buf,
+				"%s = Something very odd!\n", VarNames[i]);
+		}
+	    }
+	    SetBfp (help);
+	    InsStr (buf);
+	}
+    if (bf_cur -> b_mark == 0)
+	bf_cur -> b_mark = NewMark ();
+    SetMark (bf_cur -> b_mark, bf_cur, dot);
+    SetDot (1);
+    bf_cur -> b_mode.md_NeedsCheckpointing = 0;
+    FilterThrough (ToMark(bf_cur -> b_mark) - dot, "/bin/sh", "-c", "sort", 0);
+    SetDot (1);
+    bf_modified = 0;
+    SetBfp (old);
+    WindowOn (bf_cur);
+    return 0;
+}
+
+static ProvidePrefixArgument () {
+    if (CheckArgs(2, 2)) return 0;
+    arg = NumericArg (1);
+    ArgState = PreparedArg;
+    return err ? 0 : ExecProg (CurExec -> p_args[1]);
+}
+
+static ReturnPrefixArgument () {
+    arg = getnum (": return-prefix-argument ");
+    ArgState = PreparedArg;
+    return 0;
+}
+
+/* print out an MLisp expression (de-compile it) into the current buffer */
+PrintExpr (p, depth)
+register struct ProgNode   *p; {
+    register struct BoundName  *n;
+    if (p == 0) {
+	InsStr ("<<Command Level>>");
+	return;
+    }
+    n = p -> p_proc;
+    if (n == &BoundNumberNode) {
+	char    buf[50];
+	sprintfl (buf, sizeof buf, "%d", p -> p_args[0]);
+	InsStr (buf);
+	return;
+    }
+    if (n == &BoundStringNode) {
+	InsCStr ("\"", 1);
+	InsCStr (p -> p_args + 1, p -> p_args[0]);
+	InsCStr ("\"", 1);
+	return;
+    }
+    if (n == &BoundVariableNode) {
+	InsStr (((struct VariableName  *) p -> p_args[0]) -> v_name);
+	return;
+    }
+    InsCStr ("(", 1);
+    if (depth>=0) {
+	register i;
+	InsStr (n->b_name);
+	for(i=0; i<p->p_nargs; i++) {
+	    InsCStr (" ", 1);
+	    PrintExpr (p->p_args[i], depth-1);
+	}
+    }
+    InsCStr (")", 1);
+}
+
+/* Throw away any expression evaluation so that the current function returns
+   no value */
+VoidResult () {
+    ReleaseExpr (MLvalue);
+    MLvalue -> exp_type = IsVoid;
+}
+
+static
+CallInteractively () {
+    register rv = 0;
+
+    if (CheckArgs (1, 1))
+	return 0;
+    ForcedInteractive++;
+    rv = ExecProg (CurExec -> p_args[0]);
+    return rv;
+}
+
+InitLisp () {
+/* The following variables should really be considered private to the
+   modules that define them.  They are here only so that they can be
+   set from command level and are NOT in .h files since they aren't
+   intended for general use. */
+
+    extern  TrackEol;		/* true iff ^n and ^p should stick with
+				   eol's */
+    extern  AutoHelp;		/* true iff ambiguous or misspelled
+				   words should create a help window
+				   (DJH) */
+    if (!Once)
+    {
+	DefIntVar ("track-eol-on-^N-^P", &TrackEol);
+	DefIntVar ("ctlchar-with-^", &CtlArrow);
+	DefIntVar ("help-on-command-completion-error", &AutoHelp);
+	DefIntVar ("single-step-execution", &SingleStepExecute);
+    
+	BoundNumberNode.b_bound.b_proc = ExecNumber;
+	BoundNumberNode.b_name = "execute-number";
+	BoundVariableNode.b_bound.b_proc = ExecVariable;
+	BoundVariableNode.b_name = "execute-variable";
+	BoundStringNode.b_bound.b_proc = ExecString;
+	BoundStringNode.b_name = "execute-string";
+	defproc (SetQ, "setq");
+	defproc (SetQDefault, "setq-default");
+	defproc (Print, "print");
+	defproc (VariableApropos, "variable-apropos");
+	defproc (DeclareGlobal, "declare-global");
+	defproc (DeclareBufferSpecific, "declare-buffer-specific");
+	defproc (IsBound, "is-bound");
+	defproc (PrefixArgumentLoop, "prefix-argument-loop");
+	defproc (Set, "set");
+	defproc (SetDefault, "set-default");
+	defproc (ExecuteMLispBuffer, "execute-mlisp-buffer");
+	defproc (ExecuteMLispFileTOP, "execute-mlisp-file");
+	setkey (ESCmap, (033), ExecuteMLispLine, "execute-mlisp-line");
+	defproc (ProgN, "progn");
+	ProgNblock = *(NewNames - 1);
+	defproc (If, "if");
+	defproc (While, "while");
+	defproc (InsertString, "insert-string");
+	defproc (ProvidePrefixArgument, "provide-prefix-argument");
+	defproc (ReturnPrefixArgument, "return-prefix-argument");
+	defproc (DefineFunction, "defun");
+	defproc (ErrorOccured, "error-occured");
+	defproc (SaveExcursion, "save-excursion");
+	defproc (SaveWindowExcursion, "save-window-excursion");
+	defproc (OldSaveWindowExcursion, "old-save-window-excursion");
+	defproc (Message, "message");
+	defproc (SendStringToTerminal, "send-string-to-terminal");
+	defproc (ErrorMessage, "error-message");
+	defproc (CallInteractively, "call-interactively");
+    }
+}
+@
+
+
+1.2
+log
+@Merge Titan and Vax versions of emacs. GMcD.
+@
+text
+@d13 5
+a17 2
+/* $Header: mlisp.c,v 1.1 86/04/16 13:53:23 mcdaniel Exp $ */
+/* $Log:	mlisp.c,v $
+d31 1
+d123 1
+a123 1
+    if (name <= 0)
+d829 1
+a829 1
+    char    fnb[300];
+d841 1
+a841 1
+	char Xfn[300];
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d13 5
+a17 2
+/* $Header$ */
+/* $Log$
+d29 3
+a31 1
+static char peekc,		/* one character push-back */
+d48 1
+a48 1
+char (*ReadCharacter)();
+d50 1
+a50 1
+    register char   c;
+d68 1
+a68 1
+char (*ReadCharacter)();
+d70 1
+a70 1
+    register    c;
+d77 1
+a77 1
+char (*ReadCharacter)();
+d80 2
+a81 2
+    register char  *p,
+                    c;
+d109 1
+a109 1
+char (*ReadCharacter)();
+d111 1
+a111 1
+    register char   c;
+d123 1
+a123 1
+	DefMac (name, (char *) 0, 1);
+d154 1
+a154 1
+char (*ReadCharacter)();
+d158 1
+a158 1
+    register char   c = next;
+d237 1
+a237 1
+char (*ReadCharacter)();
+d239 2
+a240 2
+    register char  *p,
+                    c;
+d290 1
+a290 1
+    strcpyn (r -> p_args + 1, buf, p - buf);
+d802 1
+a802 1
+char (*ReadCharacter)();
+d816 1
+a816 1
+static char ReadMLispFileCharacter() {
+d824 1
+a824 1
+    register char   c;
+d855 2
+a856 2
+	    register struct ProgNode   *p =
+		ParseNode (ReadMLispFileCharacter);
+d956 1
+a956 1
+		realloc (VarNames, (VarTSize += 50) * sizeof *VarNames);
+d958 1
+a958 1
+		realloc (VarDesc, VarTSize * sizeof *VarDesc);
+d969 1
+a969 1
+char (*ReadCharacter)(); {
+@

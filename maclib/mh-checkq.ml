@@ -1,0 +1,43 @@
+(defun
+    (&mh-check-queue matches
+       (message "Checking for mail from you in the outgoing queue...")
+       (sit-for 0)
+       (temp-use-buffer "Mail Queue")
+       (setq needs-checkpointing 0)
+       (use-local-map "&mh-keymap")
+       (erase-buffer)
+       (set-mark)
+       (fast-filter-region "mailq")
+       (beginning-of-file)
+       (next-line) (next-line)
+       (set-mark)
+       (while (! (eobp))
+	      ; Search for the first message from the user
+	      (if (error-occured
+		      (re-search-forward
+			  (concat "^[^ \t].*" (users-login-name))))
+		  (end-of-file)
+		  (progn (beginning-of-line) (setq matches (+ matches 1)))
+	      )
+	      ; and erase everything backward from there to the mark.
+	      (erase-region)
+	      ; Move forward to the next line with text at the left edge.
+	      (next-line)
+	      (if (error-occured (re-search-forward "^[^ \t]"))
+		  (end-of-file)
+		  (progn (beginning-of-line) (set-mark))
+	      )
+       )		  
+       (setq buffer-is-modified 0)
+       (if (= matches 0)
+	   (message "No outgoing mail from you in queue.")
+	   (progn (delete-other-windows)
+		  (&mh-pop-to-buffer "Mail Queue")
+		  (beginning-of-file)
+		  (previous-window)
+		  (message matches " messages from you waiting to be sent.")
+	   )
+       )
+       (novalue)
+    )
+)

@@ -1,0 +1,258 @@
+/* window management commands */
+
+/*		Copyright (c) 1981,1980 James Gosling		*/
+
+/* Modified 7-Dec-80 DJH	Implement ^x^o command	*/
+
+#include "window.h"
+#include "buffer.h"
+#include "keyboard.h"
+
+ListBuffers () {
+    register struct buffer *old = bf_cur,
+                           *p;
+    SetBfn ("Buffer list");
+    if(interactive) WindowOn (bf_cur);
+    WidenRegion ();
+    EraseBf (bf_cur);
+    InsStr ("\
+   Size  Type   Buffer         Mode           File\n\
+   ----  ----   ------         ----           ----\n");
+    for (p = buffers; p; p = p -> b_next) {
+	char    line[300];
+	sprintfl (line, sizeof line, "%7d%6s %c %-14s %-14s %s\n",
+		p -> b_size1 + p -> b_size2,
+		p -> b_kind == FileBuffer ? "File"
+		: p -> b_kind == MacroBuffer ? "Macro"
+		: "Scr",
+		p -> b_modified ? 'M' : ' ',
+		p -> b_name,
+		p -> b_mode.md_ModeString,
+		p -> b_fname ? p -> b_fname : "");
+	InsStr (line);
+    }
+    bf_modified = 0;
+    bf_cur -> b_mode.md_NeedsCheckpointing = 0;
+    SetDot (1);
+    SetBfp (old);
+    WindowOn (bf_cur);
+    return 0;
+}
+
+DeleteOtherWindows () {
+    register struct window *w = windows;
+    while (w) {
+	if (w != wn_cur)
+	    DelWin (w);
+	w = w -> w_next;
+    }
+    return 0;
+}
+
+SplitCurrentWindow () {
+    SetWin (SplitWin (wn_cur));
+    return 0;
+}
+
+static
+SwitchToBuffer () {
+    SetBfn (getnbstr ("Buffer: "));
+    TieWin (wn_cur->w_next ? wn_cur : windows, bf_cur);
+    return 0;
+}
+
+static
+PopToBuffer () {
+    SetBfn (getnbstr (": pop-to-buffer "));
+    WindowOn (bf_cur);
+    return 0;
+}
+
+static
+TempUseBuffer () {
+    SetBfn (getnbstr (": temp-use-buffer "));
+    return 0;
+}
+
+EraseBuffer () {
+    EraseBf (bf_cur);
+    return 0;
+}
+
+/* DJH 7-Dec-80	This routine prompts for a buffer name with
+		command completion.
+ */
+UseOldBuffer () {
+    register int    bfn = getword (BufNames, "Buffer: ");
+    if (bfn >= 0) {
+	SetBfn (BufNames[bfn]);
+	TieWin (wn_cur->w_next ? wn_cur : windows, bf_cur);
+    }
+    return 0;
+}
+
+DeleteBuffer () {
+    register int    bfn = getword (BufNames, ": delete-buffer ");
+    register struct buffer *b;
+    register char *reply;
+    if (bfn < 0 || (b = FindBf (BufNames[bfn])) == 0 || b == minibuf)
+	return 0;
+    if (interactive && b -> b_kind != ScratchBuffer
+	    && (b == bf_cur	? bf_modified
+				: b -> b_modified) > 0
+	    && ((reply = getstr (": delete-buffer %s; are you sure? ",
+			BufNames[bfn])) == 0
+		|| *reply != 'y'))
+	return 0;
+    DelBuf (b);
+    return 0;
+}
+
+DeleteWindow () {
+    DelWin (wn_cur);
+    SetBfp (wn_cur -> w_buf);
+    return 0;
+}
+
+CalcCurrent() {
+    register int i = 1;
+    register struct window *w = windows;
+    while ( w && (w != wn_cur)) {
+        i++;
+        w = w->w_next;
+    }
+    return i;
+}
+
+NextWindow () {
+    SetWin (wn_cur -> w_next ? wn_cur -> w_next : windows);
+    if (wn_cur->w_next==0 && ResetMiniBuf==0) NextWindow ();
+    return 0;
+}
+
+PreviousWindow () {
+    register struct window *w = wn_cur -> w_prev;
+    if (w == 0) {
+	w = windows;
+	while (w -> w_next)
+	    w = w -> w_next;
+    }
+    SetWin (w);
+    if (wn_cur->w_next==0 && ResetMiniBuf==0) PreviousWindow ();
+    return 0;
+}
+
+ShrinkWindow () {
+    ChangeWindowSize (-arg);
+}
+
+static
+EnlargeWindow () {
+    ChangeWindowSize (arg);
+}
+
+ChangeWindowSize (delta)
+register    delta; {
+    if (wn_cur -> w_height + delta < (wn_cur->w_buf == minibuf ? 1 : 2)
+	    || (!ChgWHeight (wn_cur -> w_next, -delta, 1)
+		&& !ChgWHeight (wn_cur -> w_prev, -delta, -1)))
+	error ("Can't change window size");
+    else
+	if (!ChgWHeight (wn_cur, delta, 0))
+	    error ("Emacs bug -- window size change.");
+    return 0;
+}
+
+static
+WindowMove (w,down,lots,dottop)		/* handles ^Z, $Z, ^V, $V and $! */
+register struct window *w; {
+    register    n = arg;
+    register    pos;
+    if (n < 0) {
+	down = !down;
+	n = -n;
+    }
+    if (lots)
+	n *= w -> w_height * 4 / 5;
+    if (down)
+	n = -n - 1;
+    if (dottop) {
+	n = -1;
+	pos = dot;
+    }
+    else
+	pos = ToMark (w -> w_start);
+    SetMark (w -> w_start, w -> w_buf,
+	    ScanBf ('\n', pos, n));
+    w -> w_force++;
+    Cant1LineOpt++;
+}
+
+static ScrollOneLineUp () {
+    WindowMove (wn_cur, 0, 0, 0);
+    return 0;
+}
+
+static ScrollOneLineDown () {
+    WindowMove (wn_cur, 1, 0, 0);
+    return 0;
+}
+
+static NextPage () {
+    WindowMove (wn_cur, 0, 1, 0);
+    return 0;
+}
+
+static PreviousPage () {
+    WindowMove (wn_cur, 1, 1, 0);
+    return 0;
+}
+
+static LineToTopOfWindow () {
+    WindowMove (wn_cur, 0, 0, 1);
+    return 0;
+}
+
+static  PageNextWindow () {
+    struct window  *w = wn_cur -> w_next;
+#ifdef notdef				/* SWT, use negative args */
+    register down = ArgState==HaveArg;
+    arg = 1;
+#endif
+    if (w == 0 || w -> w_next == 0 && ResetMiniBuf == 0)
+	w = windows;
+    if (w == wn_cur)
+	error ("There is no other window, twit!");
+    else {
+	SetBfp (w -> w_buf);
+	WindowMove (w, 0, 1, 0);
+	SetBfp (wn_cur -> w_buf);
+    }
+    return 0;
+}
+
+InitWnMan () {
+    if (!Once)
+    {
+	setkey (CtlXmap, (Ctl ('B')), ListBuffers, "list-buffers");
+	setkey (CtlXmap, ('2'), SplitCurrentWindow, "split-current-window");
+	setkey (CtlXmap, ('1'), DeleteOtherWindows, "delete-other-windows");
+	setkey (CtlXmap, ('b'), SwitchToBuffer, "switch-to-buffer");
+	defproc (PopToBuffer, "pop-to-buffer");
+	defproc (DeleteBuffer, "delete-buffer");
+	defproc (TempUseBuffer, "temp-use-buffer");
+	defproc (EraseBuffer, "erase-buffer");
+	setkey (CtlXmap, (Ctl ('O')), UseOldBuffer, "use-old-buffer");    /* DJH */
+	setkey (CtlXmap, ('d'), DeleteWindow, "delete-window");
+	setkey (CtlXmap, ('n'), NextWindow, "next-window");
+	setkey (CtlXmap, ('p'), PreviousWindow, "previous-window");
+	setkey (CtlXmap, ('z'), EnlargeWindow, "enlarge-window");
+	setkey (CtlXmap, (Ctl ('Z')), ShrinkWindow, "shrink-window");
+	setkey (GlobalMap, (Ctl ('Z')), ScrollOneLineUp, "scroll-one-line-up");
+	setkey (ESCmap, (Ctl ('V')), PageNextWindow, "page-next-window");
+	setkey (ESCmap, ('z'), ScrollOneLineDown, "scroll-one-line-down");
+	setkey (GlobalMap, (Ctl ('V')), NextPage, "next-page");
+	setkey (ESCmap, ('v'), PreviousPage, "previous-page");
+	setkey (ESCmap, ('!'), LineToTopOfWindow, "line-to-top-of-window");
+    }
+}

@@ -1,0 +1,911 @@
+Wed Jul  7 13:22:58 1982  James Gosling  (jag at CMU-VLSI)
+	Emacs now has undo!!  It only captures buffer changes, though.
+	But it does a perfect job of capturing them: so you can undo
+	paragraph justification (for example) or even an undo.  Three
+	functions have been defined: undo, undo-boundary, and undo-more.
+	Undo-boundaries delimit the granularity of undoing.  Normally,
+	undo-boundary is called to place a boundary just before the
+	execution of a command.  "undo" with an argument of n (which
+	defaults to 1, of course) undoes all changes going back past n+1
+	undo boundaries -- this effectively undoes the last n commands.
+	Undo-more carries on where the last undo left off and undoes n
+	more commands.
+
+Thu May 27 13:27:40 1982  James Gosling  (jag at CMU-VLSI)
+	Added the function (move-dot-to-x-y X Y) which switches to the
+	window, buffer and character position indicated by screen
+	coordinates X and Y.  This is a real major win since it allows you
+	to interface easily to mice.
+
+Tue May 18 12:01:39 1982  James Gosling  (jag at CMU-VLSI)
+	The INFO system has become quite pervasive.  describe-command,
+	describe-variable and the mail system help commands all call it.
+	The describe database no longer exits, the info database has been
+	substantially extended but it still needs a lot of work.  INFO was
+	completely rewritten to substantially improve run and load time.
+	The file format is no longer compatible with ITS.
+
+	The process package was changed in a minor but winning way: the
+	character '~' was made a word character and a the "shell" abbrev
+	table was defined.  The word "~" is defined as an abbrev that
+	expands to the users home directory.  So you can type "~/foo" and
+	get the csh action in a more electric way.  You can also define
+	more abbrevs for long pathnames that you use often.  In my own
+	profile I associate the shell abbrev table with the minibuf, which
+	really wins!
+
+Sat May  8 15:59:56 1982  James Gosling  (jag at CMU-VLSI)
+	Made error-message, message and insert-string both take a list of
+	strings as arguments.
+
+Sun May  2 15:27:37 1982  James Gosling  (jag at CMU-VLSI)
+	Added the declare-buffer-specific command which takes a list of
+	variables and declares them to have buffer-specific values.  A
+	buffer-specific variable has a distinct instance for each buffer
+	in existance and a default value which is used when new buffers
+	are created. When a buffer-specific variable is assigned a value
+	only the instance associated with the currently selected buffer is
+	affected.  To set the default value for a buffer-specific
+	variable, use setq-default or set-default. Note that if you have a
+	global variable which is eventually declared buffer-specific then
+	the global value becomes the default.
+
+	Setq-default is used to set the default value of some variable.
+	It can be a global parameter, a buffer-specific variable or a
+	system variable.  It makes no matter, setq-default will set the
+	default.  Setq-default is the command to use from within some
+	MLisp program, like your start up profile (".emacs_pro").  For
+	example, (setq-default right-margin 60) will set the default right
+	margin for newly created buffers to 60.  In previous versions of
+	Emacs certain system variables had default versions from which
+	default values were taken. So, to set the default value of
+	right-margin one would assign a value to default-right-margin --
+	but no more.  Use setq-default (or set-default) instead.
+
+	The precise semantics of setq-default are:
+		If the variable being assigned to has not yet been
+		declared, then declare it as a global variable.
+
+		If it is a global variable (whether or not the declaration
+		was implicit) then assign the value to it just as the setq
+		command would have done.
+
+		Otherwise, if the variable is buffer specific then set the
+		default value for the variable.  This will be used in all
+		buffers where the variable hasn't been explicitly assigned
+		a value.  Note that if you have a global variable which is
+		eventually declared buffer-specific then the global value
+		becomes the default.  The intent of this is that users
+		should be able to put setq-default's in their .emacs_pro's
+		without concerning themselves over whether the variable
+		will eventually be a simple global or buffer-specific.
+
+Fri Mar 12 09:19:43 1982  James Gosling  (jag at CMU-VLSI)
+	Did some internal reorganization in the display package --
+	terminal type decoding has been changed.  Added a per-buffer hook
+	for auto-filling: the command set-auto-fill-hook associates a
+	command with the current buffer.  When the right margin is passed
+	by the attempt to insert some character the hook procedure for
+	that buffer is invoked.  The character that triggered the hook
+	will not have been inserted, but will be inserted immediatly after
+	the hook procedure returns [unless the procedure returns 0].  The
+	hook procedure is responsible for maintaining the position of dot.
+	last-key-struck may be usually used to determine which character
+	triggered the hook.  If no hook procedure is associated with a
+	buffer then the old action (break the line and indent) will be
+	taken)
+
+	Hook procedures may also now be attached to abbrevs.  The commands
+	define-hooked-global-abbrev and define-hooked-local-abbrev behave
+	exactly as the unhooked versions do except that they also
+	associate a named command with the abbrev.  When the abbrev
+	triggers, rather than replacing the abbreviation with the
+	expansion phrase the hook procedure is invoked.  The character
+	that trigged the abbrev will not have been inserted, but will be
+	inserted immediatly after the hook procedure returns [unless the
+	procedure returns 0].  The abbreviation will be the word
+	immediatly to the left of dot, and the function abbrev-expansion
+	returns the phrase that the abbrev would have expanded to.
+
+Thu Mar 11 13:11:20 1982  James Gosling  (jag at CMU-VLSI)
+	Added the (emacs-version) function which returns the version string of
+	the Emacs that you're running.  Added the (process-filter-name)
+	function which returns the name of the filter function attached to
+	a given buffer.
+
+Wed Feb 10 09:40:50 1982  James Gosling  (jag at CMU-VLSI)
+	Made the manual-entry (Runs the Unix man command) and info
+	commands be default autoloaded.  Minor fix to tty locking.
+
+Tue Feb  9 10:26:19 1982  James Gosling  (jag at CMU-VLSI)
+	Many small bug fixes, mostly liked to the minibuf and the way that
+	messages placed there appear.  define-keymap no longer causes core
+	dumps when redefining keymaps.  The concept driver now understands
+	the names [cC]10[08]*; an 'r' in the suffix makes it use reverse
+	video.  Built a driver for the z100 -- a Concept with custom
+	firmware for Emacs.  Minor (untested) fixes for meta keyboards.
+	Handles comments at the ends of loaded files.
+
+Thu Jan 21 20:38:41 1982  James Gosling  (jag at CMU-VLSI)
+	Added global-binding-of and local-binding-of.  They both take a
+	key as an argument and return the name of the procedure that the
+	key is globally or locally bound to.  If the key is unbound then
+	"nothing" will be returned.
+
+	Also fixed bugs in the abbrev expander and in
+	page-next-window.  Added the function window-height which returns
+	the number of visible text lines in the current window.  Added the
+	function "nothing" which evaluates the same as novalue (ie. it
+	returns a void result) except that if it is bound to some key or
+	attached to some hook then the key or hook behave as though no
+	command was bound to them.  For example, if you want to remove the
+	binding of a single key, just bind it to "nothing".
+
+-- Sent out a release around Jan 19th --
+
+Fri Jan  1 14:59:25 1982  James Gosling  (gosling at UC_CPSC)
+	The minibuf is now a real buffer!!  You can do anything in the
+	minibuf that you could do anywhere else -- switch to other
+	windows, yank stuff, .....
+
+	Also did some performance tweaking.  People with large screens
+	should notice quite an improvement.
+
+Sat Dec 19 15:54:50 1981  James Gosling  (gosling at UC_CPSC)
+	Added the split-height-threshhold variable which specifies the
+	height of the largest window that will be split when popping to a
+	window.  When popping to a window, if a window exists that is
+	larger than split-height-threshhold then it will be split to
+	provide the new window, otherwise the LRU window will be used.
+	This is for terminals like the Ambassador that have huge screens.
+
+-- Sent out a release around Dec 14 --
+
+Fri Dec 11 08:41:38 1981  James Gosling  (jag at VLSI)
+	Another fit of dementia has led me to implement the expansion of shell
+	environment variables.  $HOME/mbox is the same as ~/mbox.  If the
+	environment variable a = "foo" and b = "bar" then:
+		$a	=>	foo
+		$a$b	=>	foobar
+		$a.c	=>	foo.c
+		xxx$a	=>	xxxfoo
+		!${a}!	=>	!foo!
+
+Sat Dec  5 13:13:57 1981  James Gosling  (jag at VLSI)
+	Added the "narrow-region" command which effectivly narrows the
+	buffer to only the region between dot and mark.  Everything
+	outside of the region is still there, but invisible.  Added
+	"widen-region" which expands the visible part of the buffer to
+	include the entire buffer.  Also added "save-restriction" which is
+	like "save-excursion" except that it saves only the region
+	narrowing restriction information, and it does this properly: if
+	you narrow, then save-restriction, then widen and make some
+	changes outside the outer narrowed region, then when you return to
+	the outer narrowing the right thing happens.
+
+Wed Dec  2 18:03:50 1981  James Gosling  (jag at VLSI)
+	Added the 'r' option to query-replace, which puts you into a
+	recursive-edit.  Typing ^C exits the recursive-edit and continues
+	the query-replace.
+
+Mon Nov 30 19:55:02 1981  James Gosling  (jag at VLSI)
+	Added the return-prefix-argument variable which is to be used to
+	provide a prefix argument to the next MLisp function executed --
+	even if that next execution is a result of the next keystroke.
+
+Sat Nov 28 14:57:27 1981  James Gosling  (jag at VLSI)
+	Added the scroll-step variable which is the number of lines by
+	which windows are scrolled if dot runs off the end.  If dot has
+	gone too far or scroll-step<=0 then dot is centered in the window.
+	Setting scroll-step to 1 will cause the window to scroll by 1 line
+	if you're typing at the end of the window and hit RETURN.
+
+Wed Nov 25 10:05:01 1981  James Gosling  (jag at VLSI)
+	Did some profiling and based on that I did some performance
+	tweaking.  calcM has been improved substantially, and SortMacros
+	is now 20 times faster -- it used to be that the one call to
+	SortMacros in the initialization was taking up over a second on a
+	780.  Emacs is now to the point that when simply typing in text
+	over half of the CPU time is spent in the kernel performing reads
+	and writes.
+
+Thu Nov 19 19:23:01 1981  James Gosling  (jag at VLSI)
+	Added three new switches that are interpreted when Emacs is
+	invoked: "-l<filename>" loads the given file (only one may be
+	named), "-e<funcname>" executes the named function, "-s" replaces
+	the [purposly undocumented] share-emacs switch.  -l and -e are
+	executed in that order, after the user profile is read, but before
+	and file visits are done.  This is intended to be used along with
+	the csh alias mechanism to allow you to invoke emacs packages from
+	the shell (that is, assuming that there is anyone out there who
+	still uses the shell for anything other than to run under Emacs!).
+	For example: "alias rmail emacs -lrmail -ermail-com" will cause
+	the csh "rmail" command to invoke Emacs running rmail.  Exiting
+	rmail will exit Emacs.
+
+	I also got rid of that hack involving invoking Emacs by names other
+	than "emacs".  The -l ans -e switches are a more reasonable way to
+	do the same thing.
+
+Tue Nov 17 18:52:55 1981  James Gosling  (jag at VLSI)
+	Major changes to the mode line stuff!  The variables
+	user-mode-line, show-filename-in-mode-line and
+	display-file-percentage have disappeared -- I always considered
+	them to be grotesque hacks: a general mechanism was needed.  Now
+	there is a buffer-specific varible mode-line-format that is used
+	as a format string to determine the layout of the mode line.  When
+	a buffer is created, mode-line-format is initialized to the value of
+	default-mode-line-format.
+
+	The format string is interpreted in a manner similar to printf
+	format strings.  Unadorned characters are incorporated into the
+	mode line unchanged.  Characters prefixed by '%' (with a possible
+	intervening numeric field width) cause some special string to be
+	inserted.  The format control characters are:
+
+	b	Inserts the buffer name
+	f	Inserts the name of the file associated with the buffer.
+	m	Inserts the value of the buffer-specific variable
+		mode-string.
+	M	Inserts the value of the variable global-mode-string.
+	p	Inserts the position of "dot" as a percentage.
+	*	Inserts an '*' if the buffer has been modified.
+	[	Inserts (recursion-depth) '['s
+	]	Inserts (recursion-depth) ']'s
+
+	Setting default-mode-line-format to
+		"  %[Buffer: %b%*  File: %f   (%m)   %p%]"
+	gives a familiar mode line...
+
+	I also changed the time package to put the time into
+	global-mode-string instead of mode-string.
+
+Fri Nov 13 12:20:33 1981  James Gosling  (jag at VLSI)
+	Added user-specifiable tabs, set using the buffer specific
+	variable "tab-size".  "default-tab-size" (initially 8) provides a
+	value for tab-size when a buffer is created.  It's not clear to me
+	that user specifiable tabs are a good idea, since the rest of Unix
+	and most other DEC styled operating systems have the magic number
+	8 so deeply wired into them.  But several people wanted it, and it
+	was pretty trivial.
+
+Sun Nov  8 10:01:53 1981  James Gosling  (jag at VLSI-Vax)
+	Made rmail, smail, cd and pwd into default autoloaded functions.
+	Put markers in as a new data type, just like strings and integers.
+	Did some internal reorgnization in preperation for implementing
+	more complicated data structures & a refcount garbage collector.
+	(mark) and (dot) now return markers.
+
+Fri Nov  6 11:51:37 1981  James Gosling  (jag at VLSI-Vax)
+	Added the "prefix-argument-provided" variable.
+
+Thu Oct 22 18:53:39 1981  James Gosling  (jag at VLSI-Vax)
+	Added the files-should-end-with-newline (default on) variable which
+	indicates that when a buffer is written to a file, and the buffer
+	doesn't end in a newline, then the user should be asked if they
+	want to have a newline appended.  It used to be that this was the
+	default action, but some people objected to the question being
+	asked.  This switch was almost called "drugs-for-razak".  Added
+	the buffer-specific variable needs-checkpointing which if on (the
+	default) indicates that that buffer should be checkpointed.  There
+	are some buffers that one really doesn't need to checkpoint.
+
+Thu Oct 22 13:53:20 1981  James Gosling  (jag at VLSI-Vax)
+	Finally got around to fixing the problem that occurred when the
+	minibuf line gets wider than the screen.  It slides the contents
+	of the minibuf left as the line grows if it's prompting for input.
+
+Tue Oct 20 15:03:14 1981  James Gosling  (jag at VLSI-Vax)
+	Added unlink-file which unlinks the named file, and file-exists
+	which returns 1 if the file is writable, -1 if the file is
+	readable, and 0 otherwise.  (file-exists fn) is true iff the file
+	is readable or writable.
+
+Sun Oct 18 12:37:10 1981  James Gosling  (jag at VLSI-Vax)
+	Added the region-around-match command which sets dot and mark
+	around the region matched by the last search.  An argument of zero
+	puts dot and mark around the entire match, an argument of n puts
+	dot and mark around the n'th subpattern as specified with \( and
+	\).
+
+	Added a whole bunch of search meta-characters:
+		\w	matches a word character (may be *'ed)
+		\W	matches a non-word character (may be *'ed)
+		\b	matches on a boundary of a word
+		\B	matches on a non-boundary of a word
+		\`	matches the beginning of the buffer
+		\'	matches the end of the buffer
+		\=	matches at the position of dot
+		\<	matches anywhere left of dot
+		\>	matches anywhere right of dot.
+	A few examples:
+		\Bing\b		matches the "ing" suffix of a word.
+		\Bhi\W\W*there\B	equivalent to a word-mode-search
+					for "hi there"
+		else.*\=	finds an else if it exists on this line
+				preceeding dot.
+
+Sun Oct 18 09:39:27 1981  James Gosling  (jag at VLSI-Vax)
+	Added the buffer-modified flag to the mode line, appears as "[*]".
+	Added square brackets around the mode line to indicate recursive
+	edit nesting level.  Added the PrependExtension configuration
+	option that causes the backup and checkpoint extensions to be
+	prepended to the file name.  Added the terminal type concept108w
+	which is a wide-screen (132 column) version of the concept 100.
+	Added code to WriteFile to protect against overwriting (by
+	unlinking and creating) a write protected file.  Added a mechanism
+	for determining whether commands are being chained together, to be
+	used for things like ^K and ^N/^P [the variable this-command and
+	the procedure previous-command]. Added the procedure
+	recursion-depth that returns the number of levels of
+	recursive-edit's.  Added prepend-region-to-buffer, which is
+	similar to append-region-to-buffer with the obvious exception.
+	Added erase-region which simply erases the contents of the region
+	and doesn't do anything else, like stuffing it into a buffer.
+	Added dump-syntax-table which dumps a readable listing of the
+	contents of a syntax table into a buffer.
+
+Thu Oct 15 09:41:24 1981  James Gosling  (jag at VLSI-Vax)
+	Added the (working-directory) function which returns the
+	current working directory.  I also fixed a long-standing bug in
+	getwd that caused working directory determination to fail if a
+	mounted file system wasn't at the top of the hierarchy -- Emacs
+	wasn't using the new convention that .. in the root of a mounted
+	file system points to the node on which the file system is mounted,
+	in previous versions of Emacs .. in a mounted file system just
+	looped back on itself.  I don't know whether or not the current
+	routine will work on old style Unices.
+
+Thu Oct  8 21:14:57 1981  James Gosling  (jag at VLSI-Vax)
+	Added get-tty-buffer, which is analagous to get-tty-command except
+	that it gets a buffer name.
+
+Tue Oct  6 00:22:52 1981  James Gosling  (jag at VLSI-Vax)
+	I finally got around to implementing delete-buffer.  After n
+	zillion requests, I gave in.  The amount of bookkeeping to clean
+	up is horrendous.  Emacs refuses to delete a buffer that has
+	attached processes: I couldn't face that.  The technique used to
+	handle being nested within save-excursions & such that reference
+	the deleted buffer is rather crude: the header record of the
+	buffer is never actually deleted (although the buffer space is
+	freed).  Rather, it is left around and given a b_kind of
+	DeletedBuffer.  Then SetBfp & TieWin operations to DeletedBuffers
+	act as no-ops.
+
+Sun Oct  4 10:56:46 1981  James Gosling  (jag at VLSI-Vax)
+	Added the regular expression meta-character \| which seperates
+	alteratives in a list of regular expressions.  Searching for
+	foo\|bar will match either the string "foo" or the string "bar".
+	Moved all of the paragraph code from C to MLisp, they are now
+	autoloaded from paragraphs.ml.  Implemented forward-sentence (ESC-E)
+	and backward-sentence (ESC-A) in MLisp, autoloaded from
+	sentences.ml.
+
+Sun Sep 13 19:39:58 1981  James Gosling  (jag at VLSI-Vax)
+	Fixed a long standing bug in justify.ml which caused the paragraph
+	justifier to occasionally do nothing.  Fixed a bug in
+	"change-directory".
+
+--- Sent out a release sometime in here ---
+
+Sat Sep 12 16:13:47 1981  James Gosling  (jag at VLSI-Vax)
+	To counter the bug in mpxio that causes the tty to hang if one
+	tries to run multiple Emaces on one terminal, I've stuck in some
+	locking to allow only one Emacs process to run for each tty.
+
+Thu Sep 10 09:46:51 1981  James Gosling  (jag at VLSI-Vax)
+	Installed some mods from Jeff Mogul at Stanford: a whole new
+	TrmTERM.c (reputed to be much better!), "load" now defaults the
+	file extension to ".ml", and the mpxio stuff now copes more
+	gracefully with running out of kernel resources.
+
+Thu Sep 10 09:06:49 1981  James Gosling  (jag at VLSI-Vax)
+	Installed Dave Dyers mods to character constants, then had to
+	debug his fixes.  Character and string constant parsing will have
+	to be completely redone, it's an unholy mess right now.  Also put
+	in some bug fixes that he noticed in the conversion to the new
+	string search routines.
+
+Wed Sep  9 21:04:33 1981  James Gosling  (jag at VLSI-Vax)
+	Added the meta-digit and negative argument stuff from
+	Thomas@UTAH-20.  It allows you to type ^U-10 or ESC-2.  The meta
+	digit stuff is especially nice for the lucky sods who have meta
+	keyboards.
+
+Sat Sep  5 15:12:59 1981  James Gosling  (jag at VLSI-Vax)
+	Added a new switch to VisitFile (WindowFiddle) which is used by
+	parse-error-messages-in-region to inhibit the thrashing of windows
+	that gets done when it visits the files mentioned in the error
+	log.  Fixed up the handling of MetaKeyboards to use the terminal
+	type specific MetaFlag global, which is currently only set by the
+	TERMCAP driver from the "MT" flag.  Fixed the handling of ti, te,
+	is and bc in the TERMCAP driver.
+
+Mon Aug 31 10:14:23 1981  James Gosling  (jag at VLSI-Vax)
+	Added a default startup profile.  If the user doesn't have a
+	".emacs_pro" file in their home directory then a system default
+	profile is used.  The name of this file is specifed by
+	DefaultProfile in config.h, /usr/local/emacs/lib/maclib/profile.ml
+	is used at CMU.
+
+Sat Aug 29 17:43:02 1981  James Gosling  (jag at VLSI-Vax)
+	Decided against the cataclysm (bending to the results of a poll
+	conducted of Arapanet Unix Emacs users).  Instead the old functions
+	work as they did before, but there are now four new mothers:
+	re-search-forward, re-search-reverse, re-replace-string and
+	re-query-replace-string.  *sigh*  This is distasteful, but less so
+	than the alternatives.
+
+Fri Aug 28 08:54:45 1981  James Gosling  (jag at VLSI-Vax)
+	Added the (looking-at "string") function which is true iff the
+	given search string matches the region immediatly following dot.
+
+Thu Aug 27 08:23:24 1981  James Gosling  (jag at VLSI-Vax)
+	Completely rewrote the way that keyboard input is handled.  There
+	is now a structure called a "keymap" which maps keystrokes to
+	functions or keymaps.  A keymap is a 128 element vector, indexed
+	by a character (from a keystroke) that contains either pointers to
+	functions or other keymaps.  Keymaps my thus be formed into trees
+	where the leaves are always function invocations.  Prefix
+	characters line ESC and ^X are just bound to keymaps.  This
+	mechanism allows any character to be a prefix and it allows prefix
+	sequences to be of arbitrary lengths.  It is also possible to
+	switch back and forth between keymaps to impement top-level
+	command structures like "vi".
+
+	There is always a global keymap and a local keymap, as keys are
+	read from the keyboard the two trees are traversed in parallel
+	(you can think of keymaps as FSMs, with keystrokes triggering
+	transitions).  When either of the traversals reaches a leaf, that
+	function is invoked and interpretation os reset to the roots of
+	the trees.
+
+	The new functions are define-keymap which takes a name and defines
+	a keymap by that name; use-global-map which sets the global map
+	and use-local-map which sets the local map.  Defined maps behave
+	as regular funtions, they may be bound to keys and may be executed
+	which causes the next keystroke to be interpreted in that map.
+
+	bind-to-key and local-bind-to-key have been changed to take a
+	string as the description of the key to bind to:
+		(bind-to-key "foo-the-bar" "\033f")
+	The old format, integers with 0200 and 0400 added is still
+	supported.
+
+	[ this was actually done several weeks ago, but it's taken a while
+	  to get around to documenting it.]
+
+Wed Aug 26 19:48:04 1981  James Gosling  (jag at VLSI-Vax)
+	It a moment of weakness I've implemented the cshell ~/filename and
+	~user/filename file name expansion forms.  I really hated to do
+	this, it's very unclean, but...
+
+	The regular expression stuff has been almost entirely rewritten,
+	there were a number of bugs in the version from Bell.  I've also
+	gotten rid of the regular-expression-search variable, regular
+	expression searches will always be done.  This is so that MLisp
+	packages can depend on the behaviour of functions like
+	search-forward.  This seems to be the cleanest solution, providing
+	a host of other functions (re-search-forward, re-replace-string,
+	...) or requiring that MLisp functions save, set and restore the
+	variable don't seem right.  The major problem with this solution
+	is that there will be another cataclysm.  All users will have to
+	adapt to this new way of doing business.
+
+Fri Aug 21 19:05:45 1981  James Gosling  (jag at VLSI-Vax)
+	Integrated Tom London's regular expression stuff into the search
+	module.  Now if the variable regular-expression-search is on
+	search strings can be full ed style regular expressions and the
+	replace commands deal with references to the match.
+
+Tue Aug 18 20:40:36 1981  James Gosling  (jag at VLSI-Vax)
+	Added the recursive-edit command which invokes emacs command level
+	recursivly; fixed bug in ^U^O; added the save-window-excursion
+	command which is just like save-excursion except that buffer
+	visibility is also remembered and restored.
+
+Wed Jul 15 20:24:22 1981  James Gosling  (jag at VLSI-Vax)
+	Added the ask-about-buffer-names variable which controls what the
+	visit-file command does when constructing a buffer name it detects
+	a collision.  If ask-about-buffer-names is true (the default) then
+	Emacs will ask for a new buffer name to be given, or for <CR> to
+	be typed which will overwrite the old buffer.  If it is false then
+	a buffer name will be synthesized by appending "<n>" to the buffer
+	name, for a unique value of n.  For example, if I visit-file
+	"makefile" then the buffer name will be "makefile"; then if I
+	visit-file "man/makefile" the buffer name will be "makefile<2>".
+
+Wed Jul 15 11:25:01 1981  James Gosling  (jag at VLSI-Vax)
+	When ctlchar-with-^ is true, rubouts now display as ^? rather than
+	as \177.
+
+Sun Jul 12 09:46:42 1981  James Gosling  (jag at VLSI-Vax)
+	Sent out a new release.
+
+Thu Jul  9 16:03:43 1981  James Gosling  (jag at VLSI-Vax)
+	Added the show-filename-in-mode-line variable which if set ON (the
+	default) causes the filename associated with a buffer to be shown
+	in the mode line.  Otherwise an abbreviated mode line is used.
+
+Wed Jul  8 07:51:06 1981  James Gosling  (jag at VLSI-Vax)
+	Added the "visible-bell" variable which causes Emacs to flash the
+	screen rather that ringing the bell if the terminal is capable of
+	it.
+
+Tue Jul  7 18:00:30 1981  James Gosling  (jag at VLSI-Vax)
+	There is now a "dot" associated with each buffer as well as with
+	each window.  When you switch from window to window the buffer dot
+	is set to the dot associated with the window.  Any operations on
+	the buffer affect the buffer dot.  The real effect of this is that
+	temp-use-buffer behaves more reasonably and buffers which lose all
+	window attachments and then get reattached to windows start up at
+	the last place dot was in the buffer the last time it was visible.
+
+Tue Jul  7 12:51:44 1981  James Gosling  (jag at VLSI-Vax)
+	Added the parse-error-messages-in-region command which finds all
+	of the error messages in the region between dot and mark and
+	parses them for use with next-error (^X^N).  I also installed Dave
+	Dyer's hack to allow ^G's to interrupt execution immediatly.  This
+	has a rather major bug, and is the reason that I didn't implement
+	it a long time ago: if you type ^G while Emacs is doing output,
+	then all queued-but-not-printed characters get lost and Emacs no
+	longer has any idea of what the screen looks like.  It is pretty
+	much impossible for Emacs to tell whether or not this has
+	happened. You end up having to type ^L now and then.  The
+	"HalfBaked" switch in config.h controls the compilation of this
+	facility, I personally recommend against it until someone (are you
+	listening out there??) puts in something to stop the tty driver
+	from flushing buffers.  Since the major reason for wanting
+	interruptability is the ^X^E command, I have written a package to
+	do what ^X^E did, except that it uses the subprocess control
+	facility.  It allows you to do other things while a compilation is
+	active, including kill it with ^X^K.  The package is in
+	"newcompile.ml" in the macro library directory.
+
+Sun Jul  5 22:34:14 1981  James Gosling  (jag at VLSI-Vax)
+	Changed all of the buffer file name setting stuff to convert the
+	filename to absolute form.  visit-file (^X^V) now sets the buffer
+	name to the last component of the file name.  If two different
+	files have the same last component, then visit-file will ask you
+	to enter a new buffer name or <CR> to overwrite the old buffer.
+	So, for example, if my current directory is "/usr/jag/emacs" and I
+	do a (visit-file "../.emacs_pro") then the name of the new buffer
+	will be ".emacs_pro" and the file name will be
+	"/usr/jag/.emacs_pro".  This also fixes the long standing bug with
+	the interaction between file names and the change-directory
+	command (since all file names now start from the root).
+
+Sun Jul  5 21:05:11 1981  James Gosling  (jag at VLSI-Vax)
+	Fixed a small bug in TrmTEK4025.c and changed set-mark to not
+	issue an informative message unless called interactivly.
+
+Sun Jul  5 17:49:39 1981  James Gosling  (jag at VLSI-Vax)
+	Added the MLisp function "send-string-to-terminal" which sends
+	its' single string argument out to the tty line with absolutly no
+	conversion or interpretation.  This should only be used for such
+	things as loading function keys.  If you screw up the screen with
+	this one, Emacs won't know about it and won't fix it for you.
+
+Sun Jul  5 13:30:06 1981  James Gosling  (jag at VLSI-Vax)
+	Made "main" a file buffer instead of scratch, so that if you just
+	start typing when you enter emacs without giving a file name, then
+	when you exit it will complain if you havn't written the buffer.
+	Made ^X^W use the file name associated with the buffer if none is
+	given.  Changed abbrev expansion to use the definition of a "word"
+	given by the current syntax table.  Added two new forms of
+	character constant: '^X' returns the control character X and '\N'
+	returns the octal number N ('^c' = '\003' = 3).  I also added
+	octal constants to MLisp indicated by the first digit being '0',
+	as in C.
+
+Wed Jul  1 11:48:51 1981  James Gosling  (james at UofC)
+	Added the "replace-case" switch which causes replace-string and
+	query-replace-string to alter the case of the substituted string
+	to match the case of the original.  For example, replacing "Now is
+	the time" with "then was the time" inserts "Then was the time";
+	replacing "FOOBAR" by "blat" inserts "BLAT".  It's just like the
+	hack for abbrev insertion.
+
+Thu Jun 25 16:30:55 1981  James Gosling  (james at UofC)
+	Added the "silently-kill-processses" variable which gets rid of
+	the annoying question about killing processes still on the prowl,
+	it just goes ahead and kills them.  To the best of my knowledge, I
+	have never answered "no" to that question.
+
+Thu Jun 25 15:23:53 1981  James Gosling  (james at UofC)
+	Added a new variable, stack-trace-on-error, which if set ON causes
+	a stack trace to be dumped to the buffer "Stack Trace".  It's a
+	pretty primitive debugging facility, I agree, but it's a hell of a
+	lot better than what used to be there.  I also added three new
+	functions: (interactive) is true iff this function was called
+	interactivly, (nargs) is the number of arguments passed to this
+	function [0 if interactive], and (arg i [prompt]) evaluates to the
+	i'th argument of the current function or prompts for it if called
+	interactively [the prompt is optional, if it is omitted, the
+	function cannot be called interactivly]. For example,
+
+		(arg 1 "Enter a number: ")
+
+	Evaluates to the value of the first argument of the current function,
+	if the current function was called from MLisp.  If it was called
+	interactively then it is prompted for. As another example, given:
+
+		(defun (foo (+ (arg 1 "Number to increment? ") 1)))
+
+	then (foo 10) returns 11, but typing "ESC-Xfoo" causes emacs to
+	ask "Number to increment? ".
+
+	This is a rather bizarre parameter passing mechanism, but it has
+	several advantages: it is simple, it works well both when a function
+	is called from MLisp and interactivly, and it is powerful.  You can
+	implement language extensions (eg. a case statement) and you can get
+	the effect of lambda binding by assigning to locals.  It's
+	syntactically ugly, but what-the-hell...
+
+Thu Jun 25 08:54:50 1981  James Gosling  (james at UofC)
+	Added a bunch of stuff to describe-word-in-buffer (this is easy
+	now since it's in MLisp!!).  The usual invocation with ^X^D is the
+	same as always, except that if the user has a database in his home
+	directory called .subr-names then that will be searched as well.
+	Also, if ^X^D is given a prefix argument (^U^X^D) then it drops
+	you into a buffer to edit the description of the current word.
+	Leaving the buffer with ^X^S writes the edited description back to
+	your .subr-names file and deletes the buffer.
+
+Tue Jun 23 16:19:40 1981  James Gosling  (james at UofC)
+	Made a number of fixes to TrmAmb & TrmI400.  Changed display.c to
+	invoke device drivers with line insertion counts greater than one,
+	if possible -- this improves things for terminals with block
+	insertion features, like the Ambassador.  Moved a whole bunch of
+	functions from C into MLisp by making them autoloaded: shell,
+	justify-paragraph, text-mode, lisp-mode, c-mode, normal-mode,
+	describe-command, describe-variable, expand-mlisp-word,
+	expand-mlisp-variable (new!) and describe-word-in-buffer.  Added
+	two new functions like get-tty-string: get-tty-command and
+	get-tty-variable which read in a command or variable name with
+	command-completion and return the result as a string.  Added the
+	function (getenv "xxx") which returns the contents of the
+	environment variable named "xxx".  The file "langspecif.c" has
+	completly disappeared since all of the functions contained within
+	it are now written in MLisp.
+
+	The biggest change is the creation of a whole new data base
+	management system.  The following functions were defined:
+
+	(extend-database-search-list dbname filename) adds the given data
+		base file to the data base search list (dbname).
+	(fetch-database-entry dbname key) takes the entry in the data base
+		corresponding to the given key and inserts it into the
+		current buffer.
+	(list-databases) lists all data base search lists.
+	(put-database-entry dbname key) takes the current buffer and
+		stores it into the named database under the given key.
+
+	A database file contains a set of (key,content) pairs.  Given a
+	key, the corresponding contents can be read or written.  A data
+	base search list is a set of database files.  Fetch-database-entry
+	looks for the given key in all of the database files associated
+	with a database search list, going from the most to the least
+	recently specified file.  Put-database-entry stores the
+	(key,content) pair in the most recently specified file of the
+	search list.
+
+	The database facility was designed for such things as the
+	describe-word-in-buffer command.  Users can build their own data
+	bases of subroutine descriptions and have them searched as well as
+	the system descriptions.  The describe-command and
+	describe-variable commands also use the facility.  Info doesn't
+	use it yet, but it should.
+
+--- Sometime in here a release was sent out ---
+
+Mon May 25 08:51:33 1981  James Gosling  (jag at VLSI-Vax)
+	Added more rational handling of numeric prefix arguments (the ^U
+	prefix).  Each command is now responsible for doing the
+	interpretation of the prefix argument.  Most commands will just
+	use it as a repetition counter.  A new variable, "prefix-argument"
+	has been defined whose value is the argument prefixed to the
+	invocation of the current MLisp function.  Every function is
+	always prefixed by an argument -- if none is explicitly provided,
+	an implicit value of "1" is.  And there are two new functions:
+	(prefix-argument-loop <statements>) executes <statements>
+		prefix-argument times.
+	(provide-prefix-argument <value> <statement>) provides the prefix
+		argument <value> to the <statement>.  For example, the
+		most efficient way to skip forward 5 words is:
+		(provide-prefix-argument 5 (forward-word))
+
+	I also got rid of the prompt-string changing when subshells are
+	invoked -- the string "[emacs]" is no longer prepended.
+
+Fri May 15 14:50:20 1981  James Gosling  (jag at VLSI-Vax)
+	Added (autoload ProcedureName FileName) which causes a (load
+	ProcedureName) to be executed if ProcedureName is called, then
+	ProcedureName will be called again.  The presumption is that
+	ProcedureName will be defined within FileName.  Also made some
+	changes to the prefix argument stuff in preparation for a
+	cataclysm.
+
+Sun May 10 11:28:27 1981  James Gosling  (jag at VLSI-Vax)
+	Installed Carl Ebelings subprocess code and his improved paren
+	balancing stuff -- the semantics of forward-paren and
+	backward-paren have changed.
+
+Sun Apr 26 17:11:57 1981  James Gosling  (jag at VLSI-Vax)
+	Changed the filename-remember-across-invocation stuff to remember
+	the names and "dot" values of each file visible in a window when
+	Emacs exits, rather than the old technique of remembering the
+	filenames from the last invocation.
+
+Wed Apr 15 09:06:56 1981  James Gosling  (jag at VLSI-Vax)
+	Added unlink-checkpoint-files and changed compile-it to remember
+	the last command given and reuse it if a null answer is given to
+	the "Compilation command: " question.
+
+Mon Mar 23 08:24:46 1981  James Gosling  (jag at VLSI-Vax)
+	Added a driver for the (very braindamaged) Tektronix 4025 terminal
+	which I got from Jeffery Mogul at SU-SCORE.  This driver hasn't
+	been completely debugged yet.
+
+	Added the user-mode-line variable which is buffer-specific and if
+	set provides the text for the mode line of that buffer (rather
+	than the mode line supplied by Emacs).
+
+Mon Mar 23 08:24:07 1981  James Gosling  (jag at VLSI-Vax)
+	Sent out a release about a week ago but forgot to log it.
+
+Tue Mar 17 10:19:36 1981  James Gosling  (jag at VLSI-Vax)
+	Added forward-paragraph and backward-paragraph (from JPershing@BBN
+	who ripped them straight out of ITS Emacs).  Made the checkpoint
+	and backup extension strings be specified in config.h.  Made
+	visitfile handle missing files differently: it assumes that you
+	want to create a new file, also auto-executed commands work in
+	such situations (from JPershing@BBN).  Added a driver for an old
+	style minibee that we have a few instances of.  Minor fix to
+	dot-is-visible: it isn't always right, but it's now right more
+	often.
+
+Mon Mar 16 15:07:37 1981  James Gosling  (jag at VLSI-Vax)
+	The cataclysm has come!!  Actually, it's force has been somewhat
+	cushioned by the following hack: when a file is to be loaded it's
+	first character is examined, if it's an ESC then the old style
+	treat-it-as-keystrokes load is done.  Otherwise, the new style or
+	MLisp read/execute is done.
+
+Tue Mar 10 15:21:36 1981  James Gosling  (jag at VLSI-Vax)
+	Added the (novalue) function which evaluates to nothing; this can
+	be useful when a keyboard called function doesn't want to return a
+	value and have the message "Mlisp function returned ...".  Added
+	the "execute-mlisp-file" command which is sort of like "load"
+	except that the file is considered as a sequence of MLisp
+	expressions which are read in and executed.  WARNING!!
+	IMPENDING CATACLYSM!!  The load function will GO AWAY (actually, be
+	renamed) and loaded files with be treated as MLisp expressions, not
+	as keystrokes.  The big hassles will be peoples hand crafted
+	packages and their startup profiles.  BEWARE!!!
+
+Sat Mar  7 14:57:57 1981  James Gosling  (jag at VLSI-Vax)
+	Implemented checkpointing.  The variable
+	checkpoint-frequency is the number of keystrokes between
+	checkpoints. Every "checkpoint-frequency" keystrokes all
+	buffers which have been modified since they were last
+	checkpointed are written to a file named "@i[file].CKP".
+	@i[File] is the file name associated with the buffer, or
+	if that is null, the name of the buffer.  Proper account
+	is taken of the restriction on file names to 14 characters.
+
+Sat Feb 21 17:41:32 1981  James Gosling  (jag at VLSI-Vax)
+	Sent out another release; the last one had some embarrassing bugs.
+
+Sat Feb 21 15:39:32 1981  James Gosling  (jag at VLSI-Vax)
+	Added several new variables: default-word-mode-search,
+	default-case-fold-search, default-right-margin,
+	default-left-margin, and default-comment-column which specify the
+	default values for the buffer specific variables when a buffer is
+	created.  Fixed several bugs; speeded up macro definitions.
+
+Fri Feb 20 10:31:43 1981  James Gosling  (jag at VLSI-Vax)
+	Made a new release.
+
+Sat Feb 14 20:12:01 1981  James Gosling  (jag at VLSI-Vax)
+	Added the baud-rate variable; made word-mode-search and
+	case-fold-search be buffer-specific; and made ^Xe
+	(execute-keyboard-macro) treat its numeric argument as a repeat
+	count.
+
+Sat Feb 14 19:07:50 1981  James Gosling  (jag at VLSI-Vax)
+	Added the functions forward-paren and forward-balanced-paren-line
+	which are symmetric to backward-paren and
+	backward-balanced-paren-line.  Also speeded up FindMac a whole
+	bunch, so that loading packages is now a bunch faster.
+	Warning: Emacs cannot be entirely compiled with the -O switch, the
+	optimizer breaks it.  Fortunatly, the assembler detonates on the
+	modules that break the optimizer.
+
+Fri Feb 13 17:34:15 1981  James Gosling  (jag at VLSI-Vax)
+	Word-mode-search finally works, and it is a major win!  Case is
+	ignored and runs of non-alphanumerics match.  For example
+	"est brilgum tovi slimici" matches "Est brilgum; tovi slimici" (==
+	"twas brillig and the slithy toves" in Latin).  The matched string
+	must be bounded by non-alphanumerics: "i" doesn't match the 'i' in
+	"wish", but it does match the 'I' in "wish I were a..."
+
+Fri Feb 13 15:22:10 1981  James Gosling  (jag at VLSI-Vax)
+	Changed list-buffers and the internal procedure FilterThrough to
+	only force a window onto the buffer if they are being called
+	interactivly.  FilterThrough is called by filter-region,
+	describe-*, compile-it and a few others.  I also changed
+	save-excursion to only restore the visibility of a buffer if it
+	was visible to start with.  All of these changes are to avoid
+	mlisp functions mysteriously popping strange windows onto the
+	screen.  They usually just want to play in a buffer, without
+	changing any window associations.
+
+Thu Feb 12 18:54:42 1981  James Gosling  (jag at VLSI-Vax)
+	This is the first entry made in this log, it covers all changes
+	starting from about Feb 3.  Records of preceding changes are lost
+	to posterity (as if posterity cared!).
+	___________________________________________________________________
+
+	- Added the display-file-percentage variable which controls whether
+	or not the position within the buffer is displayed in the mode line
+	of each window.  This is primarily for lusers on slow terminals.
+
+	- Did some more cleanup on the TERMCAP terminal driver.
+
+	- Changed a few constants so that truly enormous screens can be
+	handled.
+
+	- Major bug fix in display.c -- it was clobbering a random
+	piece of memory each time it was reinitialized.  The
+	initializer was called each time you went back to the monitor,
+	hence the steadiness of Emacs appeared to slowly degrade until
+	after an afternoons editing it frothed at the mouth.
+
+	- Changed the check-for-typeahead stuff: redisplays the minibuf
+	line first if it's changed and is to be reused; and other minor
+	things.
+
+	- Several VMS changes from Kashtan@SRI: file names, pausing Emacs,
+	and exiting.
+
+	- Added a backup facility and three variables to control it:
+	backup-when-writing if true causes a backup of a file to be made
+	(fn.BAK) just before the FIRST time that it is written (subsequent
+	writes from the same invocation of Emacs don't write the .BAK
+	file).  Normally, the backup made is by just doing some linking and
+	unlinking, which can destroy link and owner information (mode
+	information is copied over to the new file).  The variable
+	backup-by-copying causes the backup to be made by a copy instead of
+	by linking (with a fairly heavy perfomance penalty);
+	backup-by-writing-when-linked causes a copy to be done if the link
+	count of the file to be written is greater than 1, otherwise a fast
+	link/unlink is done.
+
+	- Added a new MLisp function: (mark) is the character position of
+	the mark in the current buffer.
+
+	- Added a new MLisp function (dot-is-visible) which is true iff the
+	character immediatly following dot is currently visible on the
+	screen; this is an approximation & may be wrong.  But is usually
+	right.
+
+	- Added a new command: remove-all-local-bindings which removes all
+	local bindings; this should be called by every mode package to
+	clean things up.
+
+	- Case-fold-search now works (courtesy APW@SRI).
+
+	- New MLisp function which compares two characters and is true iff
+	they are the same -- takes case folding into account if
+	case-fold-search is on.  (also from APW@SRI)
+
+	- Fixed up autofill mode.  It now breaks only on spaces & tabs.
+
+	- Got rid of a lot of magic numbers ("79", "80", "23", and "24") in
+	window.c.
+
+	- Added syntax tables, much like those in ITS, and the following
+	functions: use-syntax-table, modify-syntax-entry, backward-paren,
+	backward-balanced-paren-line.  I won't try to document them here,
+	look in the manual.

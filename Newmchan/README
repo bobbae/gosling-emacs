@@ -1,0 +1,20 @@
+    Well, we finally recovered from a bad disk failure.  Here's the
+    version of Emacs that we're running now under 4.1a.  There are a
+    couple of bugs:
+
+    > Unexpected processes are handled via TCP sockets.  When you
+    suspend emacs, the code tries to reset the socket (so others don't
+    try to connect), but this doesn't work correctly all the time
+    (something is very *screwy* in UNIX).
+
+    > When you write a file that already exists, the group of the file
+    reverts back to that of the directory that the file is in (the 4.1a
+    way for creating *NEW* files).  This is because of the unlink(),
+    link(), unlink() sequence followed by a creat().  This is annoying
+    but not really serious.  (To fix it, you'd need to force emacs to
+    copy in place instead of linking -- ala backup-by-copying --
+    whenever the group id of the file differs from the group id of its
+    directory.  Even then, you'd need to exec() a chgrp -- very messy!)
+
+    Well, here's the code we're running now...
+

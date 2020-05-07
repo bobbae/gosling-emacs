@@ -1,0 +1,2005 @@
+!                                                                 [unbound]
+            (! e ) MLisp function that returns not e .
+                1                                   1
+!=                                                                [unbound]
+            (!= e  e ) MLisp function that returns true iff e  != e .
+                 1  2                                        1     2
+%                                                                 [unbound]
+            (%  e   e )  MLisp  function  that  returns  e  % e  (the C mod
+                 1   2                                    1    2
+          operator).
+&                                                                 [unbound]
+            (& e  e ) MLisp function that returns e  & e .
+                1  2                               1    2
+*                                                                 [unbound]
+            (* e  e ) MLisp function that returns e  * e .
+                1  2                               1    2
++                                                                 [unbound]
+            (+ e  e ) MLisp function that returns e  + e .
+                1  2                               1    2
+-                                                                 [unbound]
+            (- e  e ) MLisp function that returns e  - e .
+                1  2                               1    2
+/                                                                 [unbound]
+            (/ e  e ) MLisp function that returns e  / e .
+                1  2                               1    2
+<                                                                 [unbound]
+            (< e  e ) MLisp function that returns true iff e  < e .
+                1  2                                        1    2
+<<                                                                [unbound]
+            (<< e  e ) MLisp function that returns e  << e   (the  C  shift
+                 1  2                               1     2
+          left operator).
+<=                                                                [unbound]
+            (<= e  e ) MLisp function that returns true iff e  <= e .
+                 1  2                                        1     2
+=                                                                 [unbound]
+            (= e  e ) MLisp function that returns true iff e  = e .
+                1  2                                        1    2
+>                                                                 [unbound]
+            (> e  e ) MLisp function that returns true iff e  > e .
+                1  2                                        1    2
+>=                                                                [unbound]
+            (>= e  e ) MLisp function that returns true iff e  >= e .
+                 1  2                                        1     2
+>>                                                                [unbound]
+            (>>  e   e )  MLisp function that returns e  >> e  (the C shift
+                  1   2                                1     2
+          right operator).
+^                                                                 [unbound]
+            (^ e  e ) MLisp function that  returns  e   ^  e   (the  C  XOR
+                1  2                                 1      2
+          operator).
+abort-operation                                                          ^G
+            Emacs  gives up on what it is trying to do now and goes back to
+          standard input mode.  Rings the bell.  Use ^G whenever  Emacs  is
+          in  a  state you don't like, for example, asking you for a string
+          to be searched for when you decide that you don't want to  search
+          for a string.
+active-process                                                    [unbound]
+            (active-process)  --  Returns the name of the active process as
+          defined in the section describing the process mechanism.
+append-region-to-buffer                                           [unbound]
+            Appends the region between dot and mark to  the  named  buffer.
+          Neither  the original text in the destination buffer nor the text
+          in the region between dot and mark will be disturbed.
+append-to-file                                                    [unbound]
+            Takes the contents of the current buffer and appends it to  the
+          named file.  If the files doesn't exist, it will be created.
+apropos                                                               ESC-?
+            Prompts  for a keyword and then prints a list of those commands
+          whose short description contains that keyword.  For  example,  if
+          you  forget  which  commands  deal with windows, just type "ESC-?
+          windowESC".
+arg                                                               [unbound]
+            (arg i [prompt]) evaluates to the i'th argument of the invoking
+          function or prompts for it if called interactively [the prompt is
+          optional, if  it  is  omitted,  the  function  cannot  be  called
+          interactivly]. For example, 
+
+            (arg 1 "Enter a number: ")
+
+          Evaluates  to  the  value  of  the  first argument of the current
+          function, if the current function was called from MLisp.   If  it
+          was  called  interactively  then  it  is prompted for. As another
+          example, given:  
+
+            (defun (foo (+ (arg 1 "Number to increment? ") 1)))
+
+          then (foo 10) returns 11, but typing "ESC-Xfoo" causes  emacs  to
+          ask  "Number  to  increment?  ".   Language purists will no doubt
+          cringe at this rather primitive parameter  mechanism,  but  what-
+          the-hell...  it's amazingly powerful.
+ul.
+argc                                                              [unbound]
+            Is  an MLisp function that returns the number of arguments that
+          were passed to Emacs when it was invoked from the Unix shell.  If
+          either  argc or argv are called early enough then Emacs's startup
+          action of visiting  the  files  named  on  the  command  line  is
+          suppressed.
+argument-prefix                                                          ^U
+            When  followed  by  a string of digits ^U causes that string of
+          digits to be interpreted as a numeric argument which is generally
+          a repetition count for  the  following  command.    For  example,
+          ^U10^N  moves down 10 lines (the 10'th next).  A string of n ^U's
+                                                                         n
+          followed by a command provides an argument to that command of 4 .
+          For example, ^U^N moves down four lines, and  ^U^U^N  moves  down
+          16.   Argument-prefix  should  never  be  called  from  an  MLisp
+          function.
+argv                                                              [unbound]
+            (argv i) returns the ith argument that was passed to Emacs when
+          it was invoked from the Unix Shell.  If  Emacs  were  invoked  as
+          "emacs  blatto"  then  (argv 1) would return the string "blatto".
+          If either argc or argv  are  called  early  enough  then  Emacs's
+          startup action of visiting the files named on the command line is
+          suppressed.
+auto-execute                                                      [unbound]
+            Prompt for and remember a command name and a file name pattern.
+          When  a  file  is  read in via visit-file or read-file whose name
+          matches the given pattern the given  command  will  be  executed.
+          The  command is generally one which sets the mode for the buffer.
+          Patterns must be of the form "*string" or "string*":    "*string"
+          matches  any filename whose suffix is "string"; "string*" matches
+          any   filename   prefixed   by   "string".        For    example,
+          auto-execute  c-mode *.c will put Emacs into C mode for all files
+          with the extension ".c".
+autoload                                                          [unbound]
+            (autoload command file) defines the associated  command  to  be
+          autoloaded  from  the named file.  When an attempt to execute the
+          command is encountered, the file is loaded and then the execution
+          is attempted again.  the loading of the file must have  redefined
+          the  command.    Autoloading is useful when you have some command
+          written in MLisp but you don't want to have the  code  loaded  in
+          unless  it  is  actually  needed.    For  example,  if you have a
+          function named box-it in a file named box-it.ml, then the command
+          (autoload "box-it" "box-it.ml") will define the  box-it  command,
+          but  won't  load its definition from box-it.ml.  The loading will
+          happen when you try to execute the box-it command.
+backward-balanced-paren-line                                      [unbound]
+            Moves dot backward until either
+
+             - The beginning of the buffer is reached.
+
+             - An unmatched open  parenthesis,  '(',  is  encountered.
+               That  is,  unmatched  between  there  and  the starting
+               position of dot.
+
+             - The beginning of a line is encountered at  "parenthesis
+               level  zero".    That  is,  without  an  unmatched  ')'
+               existing between there and  the  starting  position  of
+               dot.
+
+          The  definitions of parenthesis and strings from the syntax table
+          for the current buffer are used.
+backward-character                                                       ^B
+            Move dot backwards one character. Ends-of-lines and  tabs  each
+          count  as  one  character.    You  can't  move back to before the
+          beginning of the buffer.
+backward-paragraph                                                    ESC-[
+            Moves to the beginning of the current  or  previous  paragraph.
+          Blank   lines,  and  Scribe  and  nroff  command  lines  separate
+          paragraphs and are not parts of paragraphs.
+backward-paren                                                    [unbound]
+            Moves dot backward until an unmatched open parenthesis, '(', or
+          the beginning of the buffer is found.  This can be used to aid in
+          skipping over Lisp S-expressions.  The definitions of parenthesis
+          and strings from the syntax table  for  the  current  buffer  are
+          used.
+backward-sentence                                                     ESC-A
+            Move  dot backward to the beginning of the preceeding sentence;
+          if dot is in the middle of a sentence, move to the  beginning  of
+          the  current  sentence.  Sentences are seperated by a `.', `?' or
+          `!' followed by whitespace.
+backward-word                                                         ESC-B
+            If in the middle of a word, go to the beginning of  that  word,
+          otherwise go to the beginning of the preceding word.  A word is a
+          sequence of alphanumerics.
+baud-rate                                                         [unbound]
+            An  MLisp  function  that returns what Emacs thinks is the baud
+          rate of the communication line to the terminal.  The baud rate is
+          (usually) 10 times  the  number  of  characters  transmitted  ber
+          second.  (Baud-rate) can be used for such things as conditionally
+          setting   the  display-file-percentage  variable  in  your  Emacs
+          profile:  (setq display-file-percentage (> (baud-rate) 600)) 
+beginning-of-file                                                     ESC-<
+            Move dot to just before the  first  character  of  the  current
+          buffer.
+beginning-of-line                                                        ^A
+            Move  dot  to  the  beginning of the line in the current buffer
+          that contains dot; that is, to just after the preceeding  end-of-
+          line or the beginning of the buffer.
+beginning-of-window                                                   ESC-,
+            Move  dot  to just in front of the first character of the first
+          line displayed in the current window.
+bind-to-key                                                       [unbound]
+            Bind a named macro or procedure to a given  key.    All  future
+          hits  on  the  key  will cause the named macro or procedure to be
+          called.  The key may be a control key, and it may be prefixed  by
+          ^X  or  ESC.    For  example, if you want ESC-= to behave the way
+          ESC-Xprint does, then typing ESC-Xbind-to-key print ESC-= will do
+          it.
+bobp                                                              [unbound]
+            (bobp)  is  an  MLisp predicate which is true iff dot is at the
+          beginning of the buffer.
+bolp                                                              [unbound]
+            (bolp) is an MLisp predicate which is true iff dot  is  at  the
+          beginning of a line.
+buffer-size                                                       [unbound]
+            (buffer-size)  is  an MLisp function that returns the number of
+          characters in the current buffer.
+c-mode                                                            [unbound]
+            Incompletely implemented.
+c=                                                                [unbound]
+            (c= e  e ) MLisp function that returns true iff e  is equal  to
+                 1  2                                        1
+          e   taking  into  account the character translations indicated by
+           2case-fold-search and word-mode-search.  If word-mode-search is in
+          effect, then upper case letters are  "c="  to  their  lower  case
+          equivalents.
+case-region-capitalize                                            [unbound]
+            Capitalize  all the words in the region between dot and mark by
+          making their first characters upper case and all the  rest  lower
+          case.
+case-region-invert                                                [unbound]
+            Invert  the  case  of  all  alphabetic characters in the region
+          between dot and mark.
+case-region-lower                                                 [unbound]
+            Change all alphabetic characters in the region between dot  and
+          mark to lower case.
+case-region-upper                                                 [unbound]
+            Change  all alphabetic characters in the region between dot and
+          mark to upper case.
+case-word-capitalize                                              [unbound]
+            Capitalize the current word (the one above or to  the  left  of
+          dot)  by  making  its first character upper case and all the rest
+          lower case.
+case-word-invert                                                  [unbound]
+            Invert the case of all alphabetic  characters  in  the  current
+          word (the one above or to the left of dot).
+case-word-lower                                                   [unbound]
+            Change  all  alphabetic characters in the current word (the one
+          above or to the left of dot) to lower case.
+case-word-upper                                                   [unbound]
+            Change all alphabetic characters in the current word  (the  one
+          above or to the left of dot) to upper case.
+change-current-process                                            [unbound]
+            (change-current-process  "process-name")  --  Sets  the current
+          process to the one named.
+change-directory                                                  [unbound]
+            Changes  the  current  directory  (for  Emacs)  to  the   named
+          directory.    All  future file write and reads (^X^S, ^X^V, etc.)
+          will be interpreted relative to that directory.
+char-to-string                                                    [unbound]
+            Takes a numeric argument and returns  a  one  character  string
+          that results from considering the number as an ascii character.
+Command prefix (also known as META
+             ESC) The next character typed will be interpreted as a command
+          based on the fact that it was preceded by ESC.  The name meta for
+          the ESC character comes from funny keyboards at Stanford and  MIT
+          that  have  a  Meta-shift  key  which is used to extend the ASCII
+          character set.  Lacking a Meta key, we  make  do  with  prefixing
+          with an ESC character.  You may see (and hear) commands like ESC-
+          V  referred  to  as Meta-V.  Sometimes the ESC key is confusingly
+          written as $, so ESC-V would be written  as  $V.    ESC  is  also
+          occasionally  referred  to as Altmode, from the labeling of a key
+          on those old favorites, model 33 teletypes.
+command-prefix                                                           ^X
+            The next character typed will be interpreted as a command based
+          on the fact that it was preceded by ^X.
+compile-it                                                             ^X^E
+            Make is a standard Unix program which takes  a  description  of
+          how  to  compile a set of programs and compiles them.  The output
+          of make (and the compilers it calls) is placed in a buffer  which
+          is  displayed in a window.  If any errors were encountered, Emacs
+          makes a note of them for later use with ^X^N.  Presumably, a data
+          base has been set up for make that causes the  files  which  have
+          been  edited  to  be  compiled.  ^X^E then updates the files that
+          have been changed and make does the necessary recompilations, and
+          Emacs notes any errors and lets you peruse them with ^X^N.
+            If ^X^E is given a non-zero argument,  then  rather  than  just
+          executing  make  Emacs  will prompt for a Unix command line to be
+          executed.  Modified buffers will still be written  out,  and  the
+          output  will  still  go  to the Error log buffer and be parsed as
+          error messages for use  with  ^X^N.    One  of  the  most  useful
+          applications   of   this   feature  involves  the  grep  program.
+          "^U^X^Egrep -n MyProc *.cESC" will  scan  through  all  C  source
+          files looking for the string "MyProc" (which could be the name of
+          a  procedure).   You can then use ^X^N to step through all places
+          in all the files where the string was found.  Note:  The  version
+          of  grep in my bin directory, /usr/jag/bin/grep, must be used: it
+          prints line numbers in a format  that  is  understood  by  Emacs.
+          (ie.  "FileName, line LineNumber)
+concat                                                            [unbound]
+            Takes   a   set   of   string   arguments   and  returns  their
+          concatenation.
+continue-process                                                  [unbound]
+            (continue-process "process-name") -- Continue a process stopped
+          by stop-process.
+copy-region-to-buffer                                             [unbound]
+            Copies the region between dot and mark  to  the  named  buffer.
+          The  buffer  is  emptied  before  the text is copied into it; the
+          region between dot and mark is left undisturbed.
+current-buffer-name                                               [unbound]
+            MLisp function that  returns  the  current  buffer  name  as  a
+          string.
+current-column                                                    [unbound]
+            (current-column) is an MLisp function that returns the printing
+          column number of the character immediately following dot.
+current-file-name                                                 [unbound]
+            MLisp  function  that returns the file name associated with the
+          current buffer as a string.  If there is no associated file name,
+          the null string is returned.
+current-indent                                                    [unbound]
+            (current-indent) is an MLisp function the returns the amount of
+          whitespace at the beginning of the line  which  dot  is  in  (the
+          printing column number of the first non-whitespace character).
+current-process                                                   [unbound]
+            (current-process) -- Returns the name of the current process as
+          defined in the section describing the process mechanism.
+current-time                                                      [unbound]
+            MLisp function that returns the current time of day as a string
+          in  the format described in CTIME(3), with the exception that the
+          trailing    newline    will    have    been     stripped     off.
+          (substr (current-time) -4 4) is the current year.
+declare-global                                                    [unbound]
+            Takes  a  list  of  variables  and for each that is not already
+          bound a global binding is created.  Global bindings  outlive  all
+          function calls.
+define-buffer-macro                                               [unbound]
+            Take  the  contents  of  the  current buffer and define it as a
+          macro whose name is associated with the buffer.  This is how  one
+          redefines a macro that has been edited using edit-macro.
+define-global-abbrev                                              [unbound]
+            Define  (or  redefine)  an  abbrev  with the given name for the
+          given phrase in the global abbreviation table.
+define-keyboard-macro                                             [unbound]
+            Give a name to the current keyboard macro.  A keyboard macro is
+          defined by using the ^X( and ^X)  command;  define-keyboard-macro
+          takes  the  current  keyboard  macro, squirrels it away in a safe
+          place, gives it a name, and erases the keyboard macro.    define-
+          string-macro is another way to define a macro.
+define-keymap                                                     [unbound]
+            (define-keymap "mapname") defines a new, empty, keymap with the
+          given  name.    See the section on keymaps, KEYMAPS page KEYMAPS,
+          for more information.
+define-local-abbrev                                               [unbound]
+            Define (or redefine) an abbrev with  the  given  name  for  the
+          given  phrase  in  the  local abbreviation table.  A local abbrev
+          table must have already been set up with use-abbrev-table.
+define-string-macro                                               [unbound]
+            Define a macro given a name and a body as a string  entered  in
+          the  minibuffer.   Note: to get a control character into the body
+          of the macro it must be quoted with ^Q.  define-keyboard-macro is
+          another way to define a macro.
+defun                                                             [unbound]
+            (defun (name expressions... )... ) is an  MLisp  function  that
+          defines  a  new  MLisp  function  with  the given name and a body
+          composed of the given expressions.  The value of the function  is
+          the value of the last expression.  For example:
+
+              (defun
+                  (indent-line                ; this function just stic
+                      (save-excursion         ; the beginning of the cu
+                          (beginning-of-line) ; without moving dot.
+                          (insert-string "    ")
+                      )
+                  )
+              )
+
+delete-buffer                                                     [unbound]
+            Deletes the named buffer.
+delete-macro                                                      [unbound]
+            Delete the named macro.
+delete-next-character                                                    ^D
+            Delete  the  character  immediatly  following dot; that is, the
+          character on which the terminals  cursor  sits.    Lines  may  be
+          merged by deleting newlines.
+delete-next-word                                                      ESC-D
+            Delete  characters  forward  from  dot  until the next end of a
+          word.  If dot is currently not in a word, all punctuation  up  to
+          the beginning of the word is deleted as well as the word.
+delete-other-windows                                                    ^X1
+            Go  back  to  one-window mode.  Generally useful when Emacs has
+          spontaneously generated a window (as for ESC-? or ^X^B)  and  you
+          want to get rid of it.
+delete-previous-character                                            RUBOUT
+            Delete the character immediatly preceding  dot;  that  is,  the
+          character  to  the  left of the terminals cursor.  If you've just
+          typed a character, RUBOUT will delete it.  Lines may be merged by
+          deleting newlines.
+newlines.
+delete-previous-word                                                  ESC-H
+            If not in the middle of a word, delete characters backwards (to
+          the left) until a word is found.  Then delete  the  word  to  the
+          left of dot.  A word is a sequence of alphanumerics.
+delete-region-to-buffer                                              ESC-^W
+            Wipe  (kill,  delete)  all characters between dot and the mark.
+          The deleted text is moved to a buffer whose name is prompted for,
+          which is emptied first.
+delete-to-killbuffer                                                     ^W
+            Wipe (kill, delete) all characters between dot  and  the  mark.
+          The  deleted  text  is moved to the kill buffer, which is emptied
+          first.
+delete-white-space                                                [unbound]
+            Deletes all whitespace characters (spaces and tabs)  on  either
+          side of dot.
+delete-window                                                           ^XD
+            Removes the current window from the screen and gives it's space
+          to  it's  neighbour below (or above) and makes the current window
+          and buffer those of the neighbour.
+describe-bindings                                                 [unbound]
+            Places in the Help window a list of all the keys and  the  name
+          of  the  procedure  that  they  are  bound  to.   This listing is
+          suitable for printing and making you own quick-reference card for
+          your own customized version of Emacs.
+describe-command                                                  [unbound]
+            Describe the named extended command.  An "extended command"  is
+          the   first   word   that   you   type   to  the  ESC-X  command.
+          "ESC-Xdescribe-command   describe-command"   will    print    the
+          documentation for the describe-command extended command.
+describe-key                                                      [unbound]
+            Describe the given key.  ESC-Xdescribe-key ESC-X will print the
+          documentation for the ESC-X key.
+describe-variable                                                 [unbound]
+            Describe  the  named  variable.  A "variable" is something that
+          you can set with the ESC-Xset command  or  print  with  the  ESC-
+          Xprint  command.   They let the user fine-tune Emacs to their own
+          taste.      ESC-Xdescribe-variable   right-margin   will    print
+          documentation about the right-margin setting.
+describe-word-in-buffer                                                ^X^D
+            Takes  the  word  nearest  the cursor and looks it up in a data
+          base and prints the information found.  This data  base  contains
+          short   one-line   descriptions  of  all  of  the  Unix  standard
+          procedures and Franz Lisp standard functions.  The idea  is  that
+          if  you've  just  typed  in  the name of some procedure and can't
+          quite remember which arguments go where, just type ^X^D and Emacs
+          will try to tell you.
+digit                                                             [unbound]
+            Heavy wizardry:  you  don't  want  to  know.    "digit"  should
+          eventually disappear.
+dot                                                               [unbound]
+            (dot)   is  an  MLisp  function  that  returns  the  number  of
+          characters to the left of dot plus  1  (ie.  if  dot  is  at  the
+          beginning  of  the  buffer,  (dot)  returns 1).  The value of the
+          function is an object of type "marker" -- if it is assigned to  a
+          variable  then  as  changes are made to the buffer the variable's
+          value continues to indicate the same position in the buffer.
+dump-syntax-table                                                 [unbound]
+            Dumps a readable listing of a syntax table into  a  buffer  and
+          makes that buffer visible.
+edit-macro                                                        [unbound]
+            Take  the  body  of  the  named  macro and place it in a buffer
+          called Macro edit.  The name of the macro is associated with  the
+          buffer  and  appears  in the information bar at the bottom of the
+          window.  The buffer may be edited  just  like  any  other  buffer
+          (this  is,  in  fact, the intent).  After the macro body has been
+          edited it may be redefined using define-buffer-macro.
+end-of-file                                                           ESC->
+            Move dot to just after the last character of the buffer.
+end-of-line                                                              ^E
+            Move dot to the end of the line  in  the  current  buffer  that
+          contains dot; that is, to just after the following end-of-line or
+          the end of the buffer.
+end-of-window                                                         ESC-.
+            Move  dot  to  just  after  the  last  character visible in the
+          window.
+enlarge-window                                                          ^XZ
+            Makes the current window one line taller, and the window  below
+          (or  the one above if there is no window below) one line shorter.
+          Can't be used if there is only one window on the screen.
+eobp                                                              [unbound]
+            (eobp) is an MLisp predicate that is true iff dot is at the end
+          of the buffer.
+eolp                                                              [unbound]
+            (eolp) is an MLisp predicate that is true iff dot is at the end
+          of a line.
+eot-process                                                       [unbound]
+            (eot-process "process-name") -- Send an EOT to the process.
+erase-buffer                                                      [unbound]
+            Deletes all text from the current buffer.  Doesn't ask to  make
+          sure if you really want to do it.
+erase-region                                                      [unbound]
+            Erases  the region between dot and mark.  It is like delete-to-
+          killbuffer except that it doesn't  move  the  text  to  the  kill
+          buffer.
+error-message                                                     [unbound]
+            (error-message "string-expression") Sends the string-expression
+          to  the  screen  as  an error message where it will appear at the
+          bottom of the screen.  Emacs will return to keyboard level.
+error-occured                                                     [unbound]
+            (error-occured expressions...) executes the  given  expressions
+          and  ignores  their values.  If all executed successfully, error-
+          occured returns  false.    Otherwise  it  returns  true  and  all
+          expressions after the one which encountered the error will not be
+          executed.
+exchange-dot-and-mark                                                  ^X^X
+            Sets  dot  to  the  currently marked position and marks the old
+          position of dot.  Useful for bouncing back and forth between  two
+          points in a file; particularly useful when the two points delimit
+          a  region of text that is going to be operated on by some command
+          like ^W (erase region).
+execute-extended-command                                              ESC-X
+            Emacs will prompt in the minibuffer (the line at the bottom  of
+          the screen) for a command from the extended set.  These deal with
+          rarely  used  features.  Commands are parsed using a Twenex style
+          command interpreter:  you can type ESC or space to invoke command
+          completion, or '?' for help with what you're allowed to  type  at
+          that  point.  This doesn't work if it's asking for a key or macro
+          name.
+execute-keyboard-macro                                                  ^XE
+            Takes the keystrokes remembered with ^X(  and  ^X)  and  treats
+          them  as  though  they had been typed again.  This is a cheap and
+          easy macro facility.  For  more  power,  see  the  define-string-
+          macro, define-keyboard-macro and bind-to-key commands.
+execute-mlisp-buffer                                              [unbound]
+            Parse  the  current  buffer as as a single MLisp expression and
+          execute it.  This is what is generally used for testing  out  new
+          functions:  stick  your  functions in a buffer wrapped in a defun
+          and use execute-mlisp-buffer to define them.
+execute-mlisp-line                                                  ESC-ESC
+            Prompt for a string,  parse  it  as  an  MLisp  expression  and
+          execute it.
+execute-monitor-command                                                 ^X!
+            Prompt  for  a Unix command then execute it, placing its output
+          into a buffer called Command execution  and  making  that  buffer
+          visible  in  a window.  The command will not be able to read from
+          its standard input (it will be connected to /dev/null).  For now,
+          there is no way to execute an interactive subprocess.
+exit-emacs                                                           ESC-^C
+            Exit Emacs.  Will ask if you're sure if there are  any  buffers
+          that have been modified but not written out.
+expand-mlisp-variable                                             [unbound]
+            Prompts  for  the  name of a declared variable then inserts the
+          name as text into the current buffer.  This is  very  handly  for
+          typing in MLisp functions.  It's also fairly useful to bind it to
+          a key for easy access.
+expand-mlisp-word                                                 [unbound]
+            Prompt  for  the name of a command then insert the name as text
+          into the current buffer.  This is very handly for typing in MLisp
+          functions.  It's also fairly useful to bind it to a key for  easy
+          access.
+extend-database-search-list                                       [unbound]
+            (extend-database-search-list  dbname  filename)  adds the given
+          data base file to the data base search list  (dbname).    If  the
+          database is already in the search list then it is left, otherwise
+          the  new  database  is  added  at  the  beginning  of the list of
+          databases.
+fetch-database-entry                                              [unbound]
+            (fetch-database-entry dbname key) takes the entry in  the  data
+          base  corresponding  to  the  given  key  and inserts it into the
+          current buffer.
+file-exists                                                       [unbound]
+            (file-exists fn) returns 1 if the file named by fn  exists  and
+          is  writable,  0 if it does not exist, and -1 if it exists and is
+          readable but not writable.
+filter-region                                                     [unbound]
+            Take the region between  dot  and  mark  and  pass  it  as  the
+          standard  input  to  the given command line.  Its standard output
+          replaces the region between dot and mark.   Use  this  to  run  a
+          region through a Unix style-filter.
+following-char                                                    [unbound]
+            (following-char)   is   an  MLisp  function  that  returns  the
+          character immediatly following dot.  The null  character  (0)  is
+          returned  if  dot is at the end of the buffer.  Remember that dot
+          is not `at' some character, it is between two characters.
+forward-balanced-paren-line                                       [unbound]
+            Moves dot forward until either
+
+             - The end of the buffer is reached.
+
+             - An unmatched close parenthesis,  ')',  is  encountered.
+               That  is,  unmatched  between  there  and  the starting
+               position of dot.
+
+             - The beginning of a line is encountered at  "parenthesis
+               level  zero".    That  is,  without  an  unmatched  '('
+               existing between there and  the  starting  position  of
+               dot.
+
+          The  definitions of parenthesis and strings from the syntax table
+          for the current buffer are used.
+forward-character                                                        ^F
+            Move dot forwards one character. Ends-of-lines  and  tabs  each
+          count  as one character.  You can't move forward to after the end
+          of the buffer.
+forward-paragraph                                                     ESC-]
+            Moves to the end of the current or following paragraph.   Blank
+          lines, and Scribe and nroff command lines separate paragraphs and
+          are not parts of paragraphs.
+forward-paren                                                     [unbound]
+            Moves dot forward until an unmatched close parenthesis, ')', or
+          the  end  of  the  buffer  is  found.  This can be used to aid in
+          skipping over Lisp S-expressions.  The definitions of parenthesis
+          and strings from the syntax table  for  the  current  buffer  are
+          used.
+forward-sentence                                                      ESC-E
+            Move  dot  forward  to  the  beginning  of  the  next sentence.
+          Sentences are  seperated  by  a  `.',  `?'  or  `!'  followed  by
+          whitespace.
+forward-word                                                          ESC-F
+            Move dot forward to the end of a word.  If not currently in the
+          middle  of  a  word, skip all intervening punctuation.  Then skip
+          over the word, leaving dot positioned after the last character of
+          the word.  A word is a sequence of alphanumerics.
+get-tty-buffer                                                    [unbound]
+            Given a prompt string it reads the name of a  buffer  from  the
+          tty using the minibuf and providing command completion.
+get-tty-character                                                 [unbound]
+            Reads a single character from the terminal and returns it as an
+          integer.  The cursor is not moved to the message area, it is left
+          in  the  text  window.    This is useful when writing things like
+          query-replace and incremental search.
+get-tty-command                                                   [unbound]
+            (get-tty-command prompt) prompts for the  name  of  a  declared
+          function  (using command completion & providing help) and returns
+          the name of the function as a string.  For example,  the  expand-
+          mlisp-word             function             is             simply
+          (insert-string (get-tty-command ": expand-mlisp-word ")).
+get-tty-string                                                    [unbound]
+            Reads a string  from  the  terminal  using  its  single  string
+          parameter  for a prompt.  Generally used inside MLisp programs to
+          ask questions.
+get-tty-variable                                                  [unbound]
+            (get-tty-variable prompt) prompts for the name  of  a  declared
+          variable  (using command completion & providing help) and returns
+          the name of the variable as a string.  For example,  the  expand-
+          mlisp-variable            function            is           simply
+          (insert-string (get-tty-variable ": expand-mlisp-variable ")).
+getenv                                                            [unbound]
+            (getenv  "varname")  returns  the   named   shell   environment
+          variable.    for  example,  (getenv  "HOME") will return a string
+          which names your home directory.
+goto-character                                                    [unbound]
+            Goes to the given character-position.  (goto-character 5)  goes
+          to character position 5.
+if                                                                [unbound]
+            (if  test  thenclause  elseclause)  is  an  MLisp function that
+          executes and returns the value of thenclause iff  test  is  true;
+          otherwise it executes elseclause if it is present.  For example:
+
+            (if (eolp)
+                (to-col 33)
+            )
+
+          will  tab  over  to column 33 if dot is currently at the end of a
+          line.
+line.
+illegal-operation                                                 [unbound]
+            Illegal-operation is bound to those keys that  do  not  have  a
+          defined interpretation.  Executing illegal-operation is an error.
+indent-C-procedure                                                    ESC-J
+            Take  the  current C procedure and reformat it using the indent
+          program,  a  fairly  sophisticated  pretty  printer.    Indent-C-
+          procedure  is  God's gift to those who don't like to fiddle about
+          getting their formatting right.   Indent-C-procedure  is  usually
+          bound  to ESC-J.  When switching from mode to mode, ESC-J will be
+          bound to procedures appropriate to that mode.   For  example,  in
+          text mode ESC-J is bound to justify-paragraph.
+insert-character                                                  [unbound]
+            Inserts  its  numeric  argument  into  the  buffer  as a single
+          character.  (insert-character '0') inserts the character '0' into
+          the buffer.
+insert-file                                                            ^X^I
+            Prompt for the name of a file and insert its contents at dot in
+          the current buffer.
+insert-string                                                     [unbound]
+            (insert-string stringexpression)  is  an  MLisp  function  that
+          inserts  the  string  that  results  from  evaluating  the  given
+          stringexpression and inserts it  into  the  current  buffer  just
+          before dot.
+int-process                                                       [unbound]
+            (int-process "process-name") -- Send an interrupt signal to the
+          process.
+interactive                                                       [unbound]
+            An MLisp function which is true iff the invoking MLisp function
+          was invoked interactively (ie. bound to a key or by ESC-X).
+is-bound                                                          [unbound]
+            an  MLisp  predicate  that is true iff all of its variable name
+          arguments are bound.  
+justify-paragraph                                                 [unbound]
+            Take the current paragraph (bounded by blank  lines  or  Scribe
+          control  lines)  and pipe it through the "fmt" command which does
+          paragraph justification.  justify-paragraph is usually  bound  to
+          ESC-J when in text mode.
+kill-process                                                      [unbound]
+            (kill-process  "process-name")  --  Send  a  kill signal to the
+          process.
+kill-to-end-of-line                                                      ^K
+            Deletes characters forward from dot to the immediatly following
+          end-of-line (or end of buffer if there isn't an end of line).  If
+          dot is positioned at the end  of  a  line  then  the  end-of-line
+          character  is  deleted.  Text deleted by the ^K command is placed
+          into the Kill buffer (which really is a buffer that you can  look
+          at).    A  ^K  command  normally  erases the contents of the kill
+          buffer first; subsequent ^K's in an unbroken sequence  append  to
+          the kill buffer.
+last-key-struck                                                   [unbound]
+            The  last  command  character  struck.   If you have a function
+          bound to many keys the function may use last-key-struck  to  tell
+          which       key       was       used      to      invoke      it.
+          (insert-character (last-key-struck)) does the obvious thing.
+length                                                            [unbound]
+            Returns the length of its string parameter.  (length "time") =>
+          4.
+line-to-top-of-window                                                 ESC-!
+            What more can I say?  This one is handy if you've just searched
+          for the declaration of a procedure, and want  to  see  the  whole
+          body (or as much of it as possible).
+list-buffers                                                           ^X^B
+            Produces  a listing of all existing buffers giving their names,
+          the name of the associated file (if there is one), the number  of
+          characters  in the buffer and an indication of whether or not the
+          buffer has been modified since it was read or  written  from  the
+          associated file.
+list-databases                                                    [unbound]
+            (list-databases) lists all data base search lists.
+list-processes                                                    [unbound]
+            (list-processes)  --  Analagous  to  "list-buffers".  Processes
+          which have died only appear once in this list  before  completely
+          disappearing.
+load                                                              [unbound]
+            Read  the  named  file  as  a  series  of MLisp expressions and
+          execute them.  Typically a  loaded  file  consists  primarily  of
+          defun's   and   buffer-specific   variable  assignments  and  key
+          bindings.  Load is usually used to load macro  libraries  and  is
+          used  to  load  ".emacs pro"  from your home directory when Emacs
+          starts up.
+            For example, loading this file:
+
+            (setq right-margin 75)
+            (defun (my-linefeed
+                        (end-of-line)
+                        (newline-and-indent)
+                   )
+            )
+            (bind-to-key "my-linefeed" 10)
+
+          sets the right-margin to 75 and defines  a  function  called  my-
+          linefeed  and  binds  it  to the linefeed key (which is the ascii
+          character 10 (decimal))
+            The file name given to load  is  interpreted  relative  to  the
+          EPATH  environment  variable,  which  is  interpreted in the same
+          manner as the shell's PATH variable.  That is, it provides a list
+          of colon-separated names that  are  taken  to  be  the  names  of
+          directories  that  are searched for the named files.  The default
+          value of EPATH searches your current directory and then a central
+          system directory.
+            Temporary hack: in previous versions of Emacs loaded files were
+          treated as a sequence of keystrokes.   This  behaviour  has  been
+          decreed  bogus  and  unreasonable,  hence  it  has  been changed.
+          However, to avoid loud cries of anguish the  load  command  still
+          exhibits  the  old behaviour if the first character of the loaded
+          file is an ESC.
+le is an ESC.
+local-bind-to-key                                                 [unbound]
+            Prompt for the name of a  command  and  a  key  and  bind  that
+          command  to the given key but unlike bind-to-key the binding only
+          has effect in the current buffer.  This  is  generally  used  for
+          mode  specific bindings that will generally differ from buffer to
+          buffer.
+looking-at                                                        [unbound]
+            (looking-at "SearchString")  is  true  iff  the  given  regular
+          expression  search  string  matches the text immediatly following
+          dot.  This is for use in packages that want to do a limited  sort
+          of  parsing.    For example, if dot is at the beginning of a line
+          then (looking-at "[ \t]*else]) will be true if  the  line  starts
+          with  an  "else".  See section SEARCHING, page SEARCHING for more
+          information on regular expressions.
+mark                                                              [unbound]
+            An MLisp function that returns the position of  the  marker  in
+          the  current  buffer.    An error is signaled if the marker isn't
+          set.  The value of the function is an object of type "marker"  --
+          if  it  is assigned to a variable then as changes are made to the
+          buffer the  variable's  value  continues  to  indicate  the  same
+          position in the buffer.
+message                                                           [unbound]
+            (message stringexpression) is an MLisp function that places the
+          string   that   results   from   the   evaluation  of  the  given
+          stringexpression into the message region on the display (the line
+          at the bottom).
+modify-syntax-entry                                               [unbound]
+            Modify-syntax-entry is used to modify a set of entries  in  the
+          syntax  table  associated with the current buffer.  Syntax tables
+          are  associated  with  buffers  by  using  the   use-syntax-table
+          command.    Syntax tables are used by commands like forward-paren
+          to do a limited form of parsing for language dependent  routines.
+          They  define  such things as which characters are parts of words,
+          which  quote  strings  and  which  delimit  comments  (currently,
+          nothing  uses the comment specification).  To see the contents of
+          a syntax table, use the dump-syntax-table command.
+            The parameter to modify-syntax-entry is a  string  whose  first
+          five  characters  specify  the  interpretation  of  the sixth and
+          following characters.
+            The  first  character specifies the type.  It may be one of the
+          following:
+
+          'w'             A word character, as used  by  such  commands  as
+                          forward-word and case-word-capitalize.
+          space           A character with no special interpretation.
+          '('             A  left parenthesis.  Typical candidates for this
+                          type  are  the  characters  '(',  '['  and   '{'.
+                          Characters  of  this  type  also  have a matching
+                          right parenthesis specified (')', ']' and '}' for
+                          example) which appears as the second character of
+                          the parameter to modify-syntax-entry.
+          ')'             A right parenthesis.  Typical candidates for this
+                          type  are  the  characters  ')',  ']'  and   '}'.
+                          Characters of this type also have a matching left
+                          parenthesis  specified  ('(',  '['  and  '{'  for
+                          example) which appears as the second character of
+                          the parameter to modify-syntax-entry.
+          '"'             A quote character.  The C string delimiters " and
+                          ' are usually given this class, as is the Lisp |.
+          '\'             A prefix character, like \ in C or / in MacLisp.
+
+            The  second  character  of  the  parameter  is   the   matching
+          parenthesis  if the character is of the left or right parenthesis
+          type. If you specify that '(' is a right parenthesis  matched  by
+          ')',  then you should also specify that ')' is a left parenthesis
+          matched by '('.
+            The third character, if equal to '{', says that  the  character
+          described  by  this  syntax  entry can begin a comment; the forth
+          character, if equal to '}' says that the character  described  by
+          this  syntax entry can end a comment.  If either the beginning or
+          ending comment sequence is two characters long,  then  the  fifth
+          character provides the second character of the comment sequence.
+            The sixth and following characters specify which characters are
+          described  by  this entry; a range of characters can be specified
+          by putting a '-' between them, a  '-'  can  be  described  if  it
+          appears as the sixth character.
+            A few examples, to help clear up my muddy exposition:
+
+              (modify-syntax-entry "w    -")  ; makes '-' behave as a n
+                                              ; character (ESC-F will c
+                                              ; one as part of a word)
+              (modify-syntax-entry "(]   [")  ; makes '[' behave as a l
+                                              ; which is matched by ']'
+              (modify-syntax-entry ")[   ]")  ; makes ']' behave as a r
+                                              ; which is matched by '['
+
+move-to-comment-column                                            [unbound]
+            If the cursor is not at the beginning of a  line,  ESC-C  moves
+          the cursor to the column specified by the comment-column variable
+          by inserting tabs and spaces as needed.  In any case, it the sets
+          the  right margin to the column finally reached.  This is usually
+          used in macros for language-specific comments.
+nargs                                                             [unbound]
+            An MLisp function which returns the number of arguments  passed
+          to  the  invoking  MLisp  function.    For  example,  within  the
+          execution of foo invoked by (foo x y) the value of nargs will  be
+          2.
+narrow-region                                                     [unbound]
+            The narrow-region command sets the restriction to encompass the
+          region  between  dot  and  mark.    Text outside this region will
+          henceforth be totally invisible.  It won't appear on  the  screen
+          and it won't be manipulable by any editing commands.  This can be
+          useful,  for  instance,  when  you  want to perform a replacement
+          within a few paragraphs: just narrow down to a  region  enclosing
+          the paragraphs and execute replace-string.
+newline                                                           [unbound]
+            Just  inserts  a  newline  character into the buffer -- this is
+          what the RETURN (^M) key is generally bound to.
+newline-and-backup                                                       ^O
+            Insert an end-of-line immediatly after dot, effectivly  opening
+          up  space.  If dot is positioned at the beginning of a line, then
+          ^O will create a  blank  line  preceding  the  current  line  and
+          position dot on that new line.
+newline-and-indent                                                 LINEFEED
+            Insert  a  newline, just as typing RETURN does, but then insert
+          enough tabs and spaces so that the newly  created  line  has  the
+          same  indentation  as the old one had.  This is quite useful when
+          you're typing in a  block  of  program  text,  all  at  the  same
+          indentation level.
+next-error                                                             ^X^N
+            Take  the  next  error  message  (as  returned  from  the  ^X^E
+          (compile) command), do a visit (^X^V) on the file  in  which  the
+          error  occurred  and  set  dot  to  the  line  on which the error
+          occurred.  The error message will be displayed at the top of  the
+          window associated with the Error log buffer.
+next-line                                                                ^N
+            Move  dot  to  the next line.  ^N and ^P attempt to keep dot at
+          the same horizontal position as you move from line to line.
+next-page                                                                ^V
+            Reposition the current window on the current buffer so that the
+          next page of the buffer is visible in the window (where a page is
+          a group of lines slightly smaller  than  a  window).    In  other
+          words, it flips you forward a page in the buffer.  Its inverse is
+          ESC-V.    If  possible,  dot is kept where it is, otherwise it is
+          moved to the middle of the new page.
+next-window                                                             ^XN
+            Switches to the window (and associated buffer)  that  is  below
+          the current window.
+novalue                                                           [unbound]
+            Does  nothing.    (novalue) is a complete no-op, it performs no
+          action and returns no value.  Generally the value of  a  function
+          is  the  value of the last expression evaluated in it's body, but
+          this value may not be desired, so (novalue) is provided  so  that
+          you can throw it away.
+page-next-window                                                     ESC-^V
+            Repositions the window below the current one (or the top one if
+          the  current  window  is  the  lowest  one  on the screen) on the
+          displayed buffer so that the next page of the buffer  is  visible
+          in  the window (where a page is a group of lines slightly smaller
+          than a window).  In other words, it flips you forward a  page  in
+          the buffer of the other window.
+            If  ESC-^V  is  given  an  argument  it  will  flip  the buffer
+          backwards a page, rather than forwards.   So  ESC-^V  is  roughly
+          equivalent  to  ^V  and  ^UESC-^V  is roughly equivalent to ESC-V
+          except that they deal with the other window.  Yes, yes, yes.    I
+          realize  that  this  is  a  bogus command structure, but I didn't
+          invent it.  Besides, you can learn to love it.
+parse-error-messages-in-region                                    [unbound]
+            Parses the region between dot and mark for error  messages  (as
+          in  the  compile-it  (^X^E)  command)  and sets up for subsequent
+          invocations of next-error (^X^N).  See  the  description  of  the
+          compile-it command, and section  (page 1).
+PILINGPROGRAMS   (page
+          COMPILINGPROGRAMS).
+pause-emacs                                                       [unbound]
+            Pause,  giving control back to the superior shell using the job
+          control facility of Berkeley Unix.   The  screen  is  cleaned  up
+          before  the  shell  regains  control,  and  when  the shell gives
+          control back to Emacs the screen will be fixed up again.    Users
+          of the sea-shell (csh) will probably rather use this command than
+          "return-to-monitor",  which is similar, except that it recursivly
+          invokes a new shell.
+pop-to-buffer                                                     [unbound]
+            Switches to a buffer whose  name  is  provided  and  ties  that
+          buffer  to a popped-up window.  Pop-to-buffer is exactly the same
+          as switch-to-buffer except that switch-to-buffer ties the  buffer
+          to the current window, pop-to-buffer finds a new window to tie it
+          to.
+preceding-char                                                    [unbound]
+            (preceding-char)   is   an  MLisp  function  that  returns  the
+          character immediatly preceding dot.  The null  character  (0)  is
+          returned if dot is at the beginning of the buffer.  Remember that
+          dot is not `at' some character, it is between two characters.
+prefix-argument-loop                                              [unbound]
+            (prefix-argument-loop   <statements>)   executes   <statements>
+          prefix-argument times.    Every  function  invocation  is  always
+          prefixed by some argument, usually by the user typing ^Un.  If no
+          prefix  argument  has  been  provided, 1 is assumed. See also the
+          command provide-prefix-argument and the variable prefix-argument.
+previous-command                                                  [unbound]
+            (previous-command) usually returns the character value  of  the
+          keystroke  that  invoked  the  previous command.  In is something
+          like last-key-struck, which returns the  keystroke  that  invoked
+          the  current  command.   However, a function may set the variable
+          this-command to some value, which will be the value of  previous-
+          command  after  the next command invocation.  This rather bizarre
+          command/variable  pair  is   intended   to   be   used   in   the
+          implementation  of  MLisp functions which behave differently when
+          chained together (ie. executed one after  the  other).    A  good
+          example  is  ^K,  kill-to-end-of-line which appends the text from
+          chained kills to the killbuffer.
+            To use this technique for  a  set  of  commands  which  are  to
+          exhibit  a  chaining  behaviour, first pick a magic number.  -84,
+          say.  Then each command in this set  which  is  chainable  should
+          (setq  this-command  -84).    Then  to tell if a command is being
+          chained, it  suffices  to  check  to  see  if  (previous-command)
+          returns -84.
+            Did I hear you scream ``hack''??
+previous-line                                                            ^P
+            Move  dot  to the previous line.  ^N and ^P attempt to keep dot
+          at the same horizontal position as you move from line to line.
+previous-page                                                         ESC-V
+            Repositions the current window on the current  buffer  so  that
+          the previous page of the buffer is visible in the window (where a
+          page  is  a  group  of lines slightly smaller than a window).  In
+          other words, it flips you backward a page in  the  buffer.    Its
+          inverse  is  ^V.  If possible, dot is kept where it is, otherwise
+          it is moved to the middle of the new page.
+previous-window                                                         ^XP
+            Switches to the window (and associated buffer)  that  is  above
+          the current window.
+print                                                             [unbound]
+            Print the value of the named variable.  This is the command you
+          use  when you want to inquire about the setting of some switch or
+          parameter.
+process-output                                                    [unbound]
+            (process-output) --  Can  only  be  called  by  the  on-output-
+          procedure  to  procure  the output generated by the process whose
+          name is given by MPX-process. Returns the output as a string.
+process-status                                                    [unbound]
+            (process-status "process-name") -- Returns -1 if "process-name"
+          isn't a process, 0 if the  process  is  stopped,  and  1  if  the
+          process is running.
+progn                                                             [unbound]
+            (progn  expressions...) is an MLisp function that evaluates the
+          expressions   and  returns  the  value  of  the  last  expression
+          evaluated.  Progn is roughly equivalent to a  compound  statement
+          (begin-end  block)  in  more  conventional  languages and is used
+          where you want to execute several expressions when there is space
+          for only one (eg. the then or else parts of an if expression).
+provide-prefix-argument                                           [unbound]
+            (provide-prefix-argument  <value>  <statement>)  provides   the
+          prefix  argument  <value>  to  the <statement>.  For example, the
+          most efficient way to skip forward 5 words is:  
+
+            (provide-prefix-argument 5 (forward-word))
+
+          See  also  the  command  prefix-argument-loop  and  the  variable
+          prefix-argument.  
+ 
+push-back-character                                               [unbound]
+            Takes  the  character provided as its argument and causes it to
+          be used as the next character read from  the  keyboard.    It  is
+          generally  only  useful  in MLisp functions which read characters
+          from  the  keyboard,  and  upon  finding  one  that  they   don't
+          understand,  terminate  and  behave  as  though  the key had been
+          struck to the Emacs keyboard command  interpreter.  For  example,
+          ITS style incremental search.
+put-database-entry                                                [unbound]
+            (put-database-entry  dbname  key)  takes the current buffer and
+          stores it into the named database under the given key.
+query-replace-string                                                  ESC-Q
+            Replace all occurrences of one string with another, starting at
+          dot and ending at the end of the buffer.  Emacs  prompts  for  an
+          old and a new string in the minibuffer (the line at the bottom of
+          the  screen).    See  the section on searching, section SEARCHING
+          page SEARCHING for more information on search strings.  For  each
+          occurrence  of  the old string, Emacs requests that the user type
+          in a character to tell it what to do (dot will be positioned just
+          after the found string).  The possible replies are:
+
+          <space>         Change this occurrence and continue  to  the
+                          next.
+          n               Don't  change  this occurrence, but continue
+                          to the next
+          r               Enter a recursive-edit.  This allows you  to
+                          make  some  local changes, then continue the
+                          query-replace-string by typing ^C.
+          !               Change this occurrence and all the  rest  of
+                          the occurrences without bothering to ask.
+          .               Change  this one and stop: don't do any more
+                          replaces.
+          ^G              Don't change this occurrence and stop: don't
+                          do any more replaces.
+          ?               (or anything else) Print a short list of the
+                          query/replace options.
+
+quietly-read-abbrev-file                                          [unbound]
+            Read in and define abbrevs appearing in a  named  file.    This
+          file  should  have  been written using write-abbrev-file.  Unlike
+          read-abbrev-file, an error message is not  printed  if  the  file
+          cannot be found.
+quit-process                                                      [unbound]
+            (quit-process  "process-name")  --  Send  a  quit signal to the
+          process.
+quote-character                                                          ^Q
+            Insert  into  the  buffer  the  next  character  typed  without
+          interpreting  it  as  a  command.    This is how you insert funny
+          characters.  For example, to insert a ^L (form feed or page break
+          character) type ^Q^L.  This is the only situation where ^G  isn't
+          interpreted as an abort character.
+re-query-replace-string                                           [unbound]
+            re-query-replace-string  is  identical  to query-replace-string
+          except that the search string is a regular expression rather than
+          an uninterpreted sequence of characters.    See  the  section  on
+          searching, section SEARCHING page SEARCHING for more information.
+re-replace-string                                                 [unbound]
+            re-replace-string  is  identical  to replace-string except that
+          the  search  string  is  a  regular  expression  rather  than  an
+          uninterpreted  sequence  of  characters.    See  the  section  on
+          searching, section SEARCHING page SEARCHING for more information.
+re-search-forward                                                 [unbound]
+            re-search-forward is identical to  search-forward  except  that
+          the  search  string  is  a  regular  expression  rather  than  an
+          uninterpreted  sequence  of  characters.    See  the  section  on
+          searching, section SEARCHING page SEARCHING for more information.
+re-search-reverse                                                 [unbound]
+            re-search-reverse  is  identical  to search-reverse except that
+          the  search  string  is  a  regular  expression  rather  than  an
+          uninterpreted  sequence  of  characters.    See  the  section  on
+          searching, section SEARCHING page SEARCHING for more information.
+read-abbrev-file                                                  [unbound]
+            Read in and define abbrevs appearing in a  named  file.    This
+          file  should have been written using write-abbrev-file.  An error
+          message is printed if the file cannot be found.
+read-file                                                              ^X^R
+            Prompt for the name of  a  file;  erase  the  contents  of  the
+          current  buffer;  read the file into the buffer and associate the
+          name with the buffer.  Dot is set to the beginning of the buffer.
+recursion-depth                                                   [unbound]
+            Returns the depth  of  nesting  within  recursive-edit's.    It
+          returns 0 at the outermost level.
+recursive-edit                                                    [unbound]
+            The   recursive-edit   function  is  a  call  on  the  keyboard
+          read/interpret/execute routine.  After recursive-edit  is  called
+          the  user  can  enter commands from the keyboard as usual, except
+          that when he exits Emacs by calling  exit-emacs  (typing  ^C)  it
+          actually  returns from the call to recursive-edit.  This function
+          is handy for packages that want to pop into some state,  let  the
+          user do some editing, then when they're done perform some cleanup
+          and  let  the  user resume.  For example, a mail system could use
+          this for message composition.
+redraw-display                                                           ^L
+            Clear the screen and rewrite  it.    This  is  useful  if  some
+          transmission  glitch,  or  a message from a friend, has messed up
+          the screen.
+region-around-match                                               [unbound]
+            Region-around-match sets dot and mark around the region matched
+          by the last search.  An argument of n puts dot  and  mark  around
+          the  n'th  subpattern matched by `\(' and `\)'.  This can then be
+          used  in  conjuction  with  region-to-string  to  extract  fields
+          matched  by  a  patter.    For  example,  consider  the following
+          fragment that extracts  user  names  and  host  names  from  mail
+          addresses:
+
+            (re-search-forward "\\([a-z][a-z]*\\) *@ *\\([a-z][a-z]*\\)")
+            (region-around-match 1)
+            (setq username (region-to-string))
+            (region-around-match 2)
+            (setq host (region-to-string))
+
+          Applying  this MLisp code to the text "send it to jag@vlsi" would
+          set the variable `username' to "jag" and `host' to "vlsi".
+lsi".
+region-to-process                                                 [unbound]
+            (region-to-process "process-name") -- The region is wrapped  up
+          and sent to the process.
+region-to-string                                                  [unbound]
+            Returns the region between dot and mark as a string.  Please be
+          kind to the storage allocator, don't use huge strings.
+remove-all-local-bindings                                         [unbound]
+            Perform   a   remove-local-binding   for   all  possible  keys;
+          effectively undoes all local  bindings.    Mode  packages  should
+          execute  this  to  initialize  the local binding table to a clean
+          state.
+remove-binding                                                    [unbound]
+            Removes the global binding of the given key.  Actually, it just
+          rebinds the key to illegal-operation.
+remove-local-binding                                              [unbound]
+            Removes the local binding of the given key.  The global binding
+          will subsequently be used when interpreting the key.  Bug:  there
+          really should be some way of saving the current binding of a key,
+          then restoring it later.
+replace-string                                                        ESC-R
+            Replace  all occurrences of one string for another, starting at
+          dot and ending and the end of the buffer.  Emacs prompts  for  an
+          old and a new string in the minibuffer (the line at the bottom of
+          the  screen).   Unlike query-replace-string Emacs doesn't ask any
+          questions about particular occurrences,  it  just  changes  them.
+          Dot  will be left after the last changed string.  See the section
+          on  searching,  section  SEARCHING  page   SEARCHING   for   more
+          information on search strings.
+return-prefix-argument                                            [unbound]
+            (return-prefix-argument  n) sets the numeric prefix argument to
+          be used by the next function invocation to n.  The next  function
+          may  be  either  the  next  function  in the normal flow of MLisp
+          execution or the next function invoked from a keystroke.  Return-
+          prefix-argument is to be used by functions that are to  be  bound
+          to  keys  and which are to provide a prefix argument for the next
+          keyboard command.
+return-to-monitor                                                        ^
+            Recursivly invokes a new shell,  allowing  the  user  to  enter
+          normal shell commands and run other programs.  Return to Emacs by
+          exiting the shell; ie. by typing ^D.
+save-excursion                                                    [unbound]
+            (save-excursion  expressions...)  is  an  MLisp  function  that
+          evaluates the given expressions and returns the value of the last
+          expression evaluated.  It is much like progn except  that  before
+          any  expressions  are  executed  dot  and  the current buffer are
+          "marked"  (via  the  marker  mechanism)  then  after   the   last
+          expression  is  executed  dot and the current buffer are reset to
+          the  marked  values.    This  properly  takes  into  account  all
+          movements  of dot and insertions and deletions that occur.  Save-
+          excursion is useful in MLisp functions where you want  to  go  do
+          something somewhere else in this or some other buffer but want to
+          return to the same place when you're done; for example, inserting
+          a tab at the beginning of the current line.
+save-restriction                                                  [unbound]
+            Save-restriction   is  only  useful  to  people  writing  MLisp
+          programs.  It is used to save  the  region  restriction  for  the
+          current  buffer  (and  only  the  region  restriction) during the
+          execution of  some  subexpression  that  presumably  uses  region
+          restrictions.    The  value of (save-excursion expressions...) is
+          the value of the last expression evaluated.
+save-window-excursion                                             [unbound]
+            save-window-excursion is  identical  to  save-excursion  except
+          that  it  also  saves  (in  a rough sort of way) the state of the
+          windows.  That is, (save-window-excursion  expressions...)  saves
+          the  current  dot,  mark,  buffer  and window state, executes the
+          expressions, restores the saved information and returns the value
+          of the last expression evaluated.
+            When the window state is saved Emacs  remembers  which  buffers
+          were visible.  When it is restored, Emacs makes sure that exactly
+          those  buffers  are visible.  Emacs does not save and restore the
+          exact layout of the windows: this is a feature, not a bug.  
+scroll-one-line-down                                                  ESC-Z
+            Repositions the current window on the current  buffer  so  that
+          the  line  which  is currently the second to the last line in the
+          window becomes the last -- effectivly it moves  the  buffer  down
+          one line in the window.  ^Z is its inverse.
+scroll-one-line-up                                                       ^Z
+            Repositions  the  current  window on the current buffer so that
+          the line which is currently the second line in the window becomes
+          the first -- effectivly it moves the buffer up one  line  in  the
+          window.  ESC-Z is its inverse.
+search-forward                                                           ^S
+            Prompt  for  a  string  and  search  for a match in the current
+          buffer, moving forwards from dot, stopping  at  the  end  of  the
+          buffer.   Dot is left at the end of the matched string if a match
+          is found, or is unmoved if not.  See the  section  on  searching,
+          section SEARCHING page SEARCHING for more information.
+search-reverse                                                           ^R
+            Prompt for a string and search  for  a  match  in  the  current
+          buffer,  moving  backwards from dot, stopping at the beginning of
+          the buffer.  Dot is left at the beginning of the  matched  string
+          if  a  match  is found, or is unmoved if not.  See the section on
+          searching, section SEARCHING page SEARCHING for more information.
+self-insert                                                       [unbound]
+            This  is  tied to those keys which are supposed to self-insert.
+          It is roughly the same  as  (insert-character  (last-key-struck))
+          with  the  exception that it doesn't work unless it is bound to a
+          key.
+send-string-to-terminal                                           [unbound]
+            (send-string-to-terminal "string") sends  the  string  argumetn
+          out  to  the terminal with no conversion or interpretation.  This
+          should only be used for such  applications  as  loading  function
+          keys  when  Emacs  starts  up.  If you screw up the screen, Emacs
+          won't know about it and won't fix it up automatically for you  --
+          you'll have to type ^L.  
+set                                                               [unbound]
+            Set  the  value of some variable internal to Emacs.  Emacs will
+          ask for the name of a variable and a value to set  it  to.    The
+          variables control such things as margins, display layout options,
+          the  behavior  of  search commands, and much more.  The available
+          variables and switches are described elsewhere.  Note that if set
+          is used from MLisp the variable  name  must  be  a  string:  (set
+          "left-margin" 77).
+set-mark                                                                 ^@
+            Puts  the marker for this buffer at the place where dot is now,
+          and leaves it there.  As text is inserted or deleted  around  the
+          mark,  the  mark  will  remain in place.  Use ^X^X to move to the
+          currently marked position.
+setq                                                              [unbound]
+            Assigns a new value to a variable.  Variables may  have  either
+          string   or   integer   values.     (setq  i  5)  sets  i  to  5;
+          (setq s (concat "a" "b")) sets s to "ab".
+shrink-window                                                          ^X^Z
+            Makes the current window one line shorter, and the window below
+          (or the one above if there is no window below) one  line  taller.
+          Can't be used if there is only one window on the screen.
+sit-for                                                           [unbound]
+            Updates  the display and pauses for n/10 seconds.  (sit-for 10)
+          waits for one second.  This is useful in such things  as  a  Lisp
+          auto-paren balencer.
+split-current-window                                                    ^X2
+            Enter  two-window  mode.  Actually, it takes the current window
+          and splits it into two windows, dividing the space on the  screen
+          equally  between the two windows.  An arbitrary number of windows
+          can be created -- the only  limit  is  on  the  amount  of  space
+          available  on  the  screen, which, sigh, is only 24 lines on most
+          terminals available these days (with the notable exception of the
+          Ann Arbor Ambassador which has 60).
+start-filtered-process                                            [unbound]
+            (start-filtered-process  "command"  "buffer-name"   "on-output-
+          procedure")  --  Does the same thing as start-process except that
+          things are set up so that "on-output-procedure" is  automatically
+          called whenever output has been received from this process.  This
+          procedure can access the name of the process producing the output
+          by  refering  to  the  variable MPX-process, and can retrieve the
+          output itself by calling the procedure process-output.
+                 The  filter  procedure  must  be  careful  to   avoid
+               generating     side-effects    (eg.    search-forward).
+               Moreover, if it attempts to  go  to  the  terminal  for
+               information, output from other processes may be lost.
+start-process                                                     [unbound]
+            (start-process  "command"  "buffer-name")  -- The home shell is
+          used to start a process executing the command.  This  process  is
+          tied  to the buffer "buffer-name" unless it is null in which case
+          the "Command execution" buffer is used.  Output from the  process
+          is  automatically  attached  to the end of the buffer.  Each time
+          this is done, the mark is left at the end of the output (which is
+          the end of the buffer).
+start-remembering                                                       ^X(
+            All following keystrokes will be remembered by Emacs.
+stop-process                                                      [unbound]
+            (stop-process "process-name") -- Tell the process  to  stop  by
+          sending it a stop signal.  Use continue-process to carry on.
+stop-remembering                                                         ^X
+            )  Stops  remembering  keystrokes,  as  initiated  by ^X(.  The
+          remembered keystrokes are not forgotten and  may  be  re-executed
+          with ^XE.
+string-to-char                                                    [unbound]
+            Returns  the integer value of the first character of its string
+          argument.  (string-to-char "0") = '0'.
+string-to-process                                                 [unbound]
+            (string-to-process "process-name" "string") --  The  string  is
+          sent to the process.
+substr                                                            [unbound]
+            (substr str pos n) returns the substring of string str starting
+          at  position pos (numbering from 1) and running for n characters.
+          If pos is less than 0, then length of the string is added to  it;
+          the   same  is  done  for  n.    (substr  "kzin"  2  2)  =  "zi";
+          (substr "blotto.c" -2 2) = ".c".
+switch-to-buffer                                                        ^XB
+            Prompt for the name of the buffer and  associate  it  with  the
+          current  window.    The  old  buffer  associated with this window
+          merely loses that association: it is not erased or changed in any
+          way.  If the new buffer does not exist, it will  be  created,  in
+          contrast with ^X^O.
+system-name                                                       [unbound]
+            Is  an  MLisp  function  that returns the name of the system on
+          which Emacs is being run.  This should be the ArpaNet or EtherNet
+          (or whatever) host name of the machine.
+temp-use-buffer                                                   [unbound]
+            Switch to a named buffer without changing window  associations.
+          The  commands  pop-to-buffer  and  switch-to-buffer  both cause a
+          window to be tied to the selected  buffer,  temp-use-buffer  does
+          not.    There  are a couple of problems that you must beware when
+          using this command:  The keyboard command driver insists that the
+          buffer tied to the current window be the current  buffer,  if  it
+          sees  a  difference  then it changes the current buffer to be the
+          one tied to the current window.  This means that  temp-use-buffer
+          will be ineffective from the keyboard, switch-to-buffer should be
+          used instead.  The other problem is that "dot" is really a rather
+          funny  concept.    There is a value of "dot" associated with each
+          window, not with each buffer.  This is done so that  there  is  a
+          valid interpretation to having the same buffer visible in several
+          windows.    There  is  also  a value of "dot" associated with the
+          current buffer.  When you  switch  to  a  buffer  with  temp-use-
+          buffer,  this  "transient  dot"  is  what  gets used.  So, if you
+          switch to another buffer, then use temp-use-buffer to  get  back,
+          "dot"  will  have  been  set to 1.  You can use save-excursion to
+          remember your position.
+to-col                                                            [unbound]
+            (to-col n) is an MLisp function that insert tabs and spaces  to
+          move the following character to printing column n.
+transpose-characters                                                     ^T
+            Take  the  two characters preceding dot and exchange them.  One
+          of the most common errors for typists to make is transposing  two
+          letters,  typing  "hte" when "the" is meant.  ^T makes correcting
+          these errors easy, especially if you can develop a "^T reflex".
+unlink-file                                                       [unbound]
+            (unlink-file fn) attempts to unlink (remove) the file named fn.
+          It returns true if the unlink failed.
+use-abbrev-table                                                  [unbound]
+            Sets the current local abbrev table to the one with  the  given
+          name.    Local  abbrev tables are buffer specific and are usually
+          set depending on the major mode.  Several buffers  may  have  the
+          same  local abbrev table.  If either the selected abbrev table or
+          the global abbrev table have had some abbrevs  defined  in  them,
+          abbrev-mode is turned on for the current buffer.  
+use-global-map                                                    [unbound]
+            (use-global-map "mapname") uses the named map to  be  used  for
+          the  global  interpretation of all key strokes.  use-local-map is
+          used to change the local interpretation of key strokes.  See  the
+          section on keymaps, KEYMAPS page KEYMAPS, for more information.
+use-local-map                                                     [unbound]
+            (use-local-map "mapname") uses the named map to be used for the
+          local  interpretation of all key strokes.  use-global-map is used
+          to change the global interpretation of  key  strokes.    See  the
+          section on keymaps, KEYMAPS page KEYMAPS, for more information.
+use-old-buffer                                                         ^X^O
+            Prompt  for  the  name  of the buffer and associate it with the
+          current window.  The  old  buffer  associated  with  this  window
+          merely loses that association: it is not erased or changed in any
+          way.  The buffer must already exist, in contrast with ^XB.
+use-syntax-table                                                  [unbound]
+            Associates the named syntax table with the current buffer.  See
+          the  description  of  the  modify-syntax-entry  command  for more
+          information on syntax tables.
+users-full-name                                                   [unbound]
+            MLisp function that returns the users full name  as  a  string.
+          [Really, it returns the contents of the gecos field of the passwd
+          entry for the current user, which is used on many systems for the
+          users full name.]
+users-login-name                                                  [unbound]
+            MLisp function that returns the users login name as a string.
+visit-file                                                             ^X^V
+            Visit-file asks for the name of a file and switches to a buffer
+          that  contains  it.    The  file  name  is  expanded to it's full
+          absolute form (that is, it will start with a '/').  If no  buffer
+          contains  the file already then Emacs will switch to a new buffer
+          and read the file into it.  The name of this new buffer  will  be
+          just  the  last  component of the file name (everything after the
+          last '/' in the name).  If there is  already  a  buffer  by  that
+          name, and it contains some other file, then Emacs will ask "Enter
+          a  new  buffer  name  or  <CR> to overwrite the old buffer".  For
+          example, if my current directory is "/usr/jag/emacs" and I  do  a
+          ^X^V and give Emacs the file name "../.emacs pro"then the name of
+          the  new  buffer  will  be ".emacs pro" and the file name will be
+          "/usr/jag/.emacs pro". ^X^V is the approved way of switching from
+          one file to another within an invocation of Emacs.
+while                                                             [unbound]
+            (while test expressions...) is an MLisp function that  executes
+          the given expressions while the test is true.
+widen-region                                                      [unbound]
+            The  widen-region command sets the restriction to encompass the
+          entire buffer.  It  is  usualy  used  after  a  narrow-region  to
+          restore Emacs's attention to the whole buffer.
+working-directory                                                 [unbound]
+            Returns the pathname of the current working directory.
+write-abbrev-file                                                 [unbound]
+            Write  all  defined  abbrevs  to  a  named  file.  This file is
+          suitable for reading back with read-abbrev-file.
+write-current-file                                                     ^X^S
+            Write the contents of the current buffer to the file whose name
+          is associated with the buffer.
+write-file-exit                                                        ^X^F
+            Write all modified buffers to their associated files and if all
+          goes well, Emacs will exit.
+write-modified-files                                                   ^X^M
+            Write each modified buffer (as indicated by ^X^B) onto the file
+          whose name is associated with the buffer.  Emacs will complain if
+          a modified buffer does not have an associated file.
+write-named-file                                                       ^X^W
+            Prompt for a name; write the contents of the current buffer  to
+          the named file.
+yank-buffer                                                          ESC-^Y
+            Take  the contents of the buffer whose name is prompted for and
+          insert it at dot in the current buffer.  Dot is  left  after  the
+          inserted text.
+yank-from-killbuffer                                                     ^Y
+            Take  the  contents of the kill buffer and inserts it at dot in
+          the current buffer.  Dot is left after the inserted text.
+|                                                                 [unbound]
+            (| e  e ) MLisp function that returns e  | e .
+                1  2                               1    2
+ask-about-buffer-names
+            The ask-about-buffer-names variable controls  what  the  visit-
+          file  command  does if it detects a collision when constructing a
+          buffer name.  If ask-about-buffer-names  is  true  (the  default)
+          then  Emacs  will  ask  for a new buffer name to be given, or for
+          <CR> to be typed which will overwrite the old buffer.  If  it  is
+          false  then  a buffer name will be synthesized by appending "<n>"
+          to the buffer name, for a unique value of n.  For example,  if  I
+          visit-file  "makefile"  then  the buffer name will be "makefile";
+          then if I visit-file  "man/makefile"  the  buffer  name  will  be
+          "makefile<2>".
+backup-by-copying
+            If  true, then when a backup of a file is made (see the section
+          on the backup-before-writing variable) then rather than doing the
+          fancy link/unlink footwork, Emacs copies the original  file  onto
+          the  backup.    This  preserves  all link and owner information &
+          ensures that the files I-number doesn't change (you're  crazy  if
+          you  worry  about  a  files I-number). Backup-by-copying incurs a
+          fairly heafty performance  penalty.    See  the  section  on  the
+          backup-by-copying-when-linked  variable  for  a  description of a
+          compromise.  (default OFF)
+backup-by-copying-when-linked
+            If true, then when a backup of a file is made (see the  section
+          on  the backup-before-writing variable) then if the link count of
+          the  file  is  greater  than  1,  rather  than  doing  the  fancy
+          link/unlink  footwork,  Emacs  copies  the original file onto the
+          backup.  If the link count is 1, then the  link/unlink  trick  is
+          pulled. This preserves link information when it is important, but
+          still  manages  reasonable  performance the rest of the time. See
+          the section on the backup-by-copying variable for  a  description
+          of  a  how  to  have  owner  &  I-number  information  preserved.
+          (default OFF)
+backup-when-writing
+            If ON Emacs will make a backup of a file just before the  first
+          time  that it is overwritten.  The backup will have the same name
+          as the original, except that the string ".BAK" will be  appended;
+          unless  the last name in the path has more than 10 characters, in
+          which case it will be truncated to 10 characters.   "foo.c"  gets
+          backed     up     on     "foo.c.BAK";     "/usr/jag/foo.c"     on
+          "/usr/jag/foo.c.BAK"; and "EtherService.c"  on  "EtherServi.BAK".
+          The  backup  will  only  be  made the first time that the file is
+          rewritten from within the same invocation of  Emacs,  so  if  you
+          write  out  the file several times the .BAK file will contain the
+          file as it was before Emacs was invoked.  The backup is  normally
+          made  by  fancy  footwork  with  links  and  unlinks,  to achieve
+          acceptable performance:  when "foo.c" is to be  rewritten,  Emacs
+          effectivly executes a "mv foo.c foo.c.BAK" and then creates foo.c
+          a  write  the  new  copy.  The file protection of foo.c is copied
+          from the old foo.c, but old links to the file now  point  to  the
+          .BAK  file,  and  the owner of the new file is the person running
+          Emacs.  If you  don't  like  this  behaviour,  see  the  switches
+          backup-by-copying  and  backup-by-copying-when-linked.   (default
+          OFF)
+buffer-is-modified
+            Buffer-is-modified is true iff  the  current  buffer  has  been
+          modified  since it was last written out.  You may set if OFF (ie.
+          to 0) if you want Emacs to ignore the mods that have been made to
+          this buffer -- it doesn't get you back to the unmodified version,
+          it just tells Emacs not to write it out with the  other  modified
+          files.  Emacs sets buffer-is-modified true any time the buffer is
+          modified.
+case-fold-search
+            If set ON all searches will ignore the case of alphabetics when
+          doing comparisons.  (default OFF)
+checkpoint-frequency
+            The   number   of   keystrokes   between   checkpoints.   Every
+          "checkpoint-frequency" keystrokes all  buffers  which  have  been
+          modified  since they were last checkpointed are written to a file
+          named "file.CKP".  File is the  file  name  associated  with  the
+          buffer,  or  if  that  is  null,  the name of the buffer.  Proper
+          account  is  taken  of  the  restriction  on  file  names  to  14
+          characters.  (default 300)
+comment-column
+            The  column  at  which  comments  are  to  start.   Used by the
+          language-dependent  commenting  features  through  the   move-to-
+          comment-column command.  (default 33)
+ctlchar-with-^
+            If  set  ON  control  characters  are  printed  as  ^C  (an '^'
+          character followed by the upper case alphabetic that  corresponds
+          to  the  control character), otherwise they are printed according
+          to the usual Unix convention ('\' followed by a three digit octal
+          number).  (default OFF)
+default-case-fold-search
+            Default-case-fold-search provides the default value  for  case-
+          fold-search,  which  is  used  whenever  a new buffer is created.
+          (default OFF)
+default-comment-column
+            Default-comment-column provides the default value for  comment-
+          column,  which  is  used  whenever  a new buffer is created.  Its
+          initial value is 33.  
+default-left-margin
+            Default-left-margin provides the default value for left-margin,
+          which is used whenever a new buffer is created.  (default 1)
+default-mode-line-format
+            This is the value given to mode-line-format when  a  buffer  is
+          created.
+default-right-margin
+            Default-right-margin  provides  the  default  value  for right-
+          margin, which is used whenever a new  buffer  is  created.    Its
+          initial value is some very large number.
+default-tab-size
+            This  is  the value given to tab-size when a buffer is created.
+          (default 8).
+files-should-end-with-newline
+            Indicates that when a buffer is written  to  a  file,  and  the
+          buffer doesn't end in a newline, then the user should be asked if
+          they  want  to  have a newline appended.  It used to be that this
+          was the default action, but some people objected to the  question
+          being asked. (default ON)
+global-mode-string
+            Global-mode-string   is   a   global   variable   used  in  the
+          construction of mode lines see section MODELINES, page  MODELINES
+          for more information.
+help-on-command-completion
+            If  ON  Emacs  will  print  a  list  of  possibilities  when an
+          ambiguous command is given, otherwise it just rings the bell  and
+          waits for you to type more.  (default ON)
+left-margin
+            The  left  margin  for  automatic text justification.  After an
+          automatically generated newline the new line will be indented  to
+          the left margin.
+mode-line-format
+            mode-line-format  is a buffer specific variable used to specify
+          the format of a mode line.  See section MODELINES, page MODELINES
+          for more information.
+mode-string
+            Mode-string  is  a  buffer  specific  variable  used   in   the
+          construction  of mode lines see section MODELINES, page MODELINES
+          for more information.
+needs-checkpointing
+            A buffer-specific variable  which  if  ON  indicates  that  the
+          buffer  should  be checkpointed periodically.  If it is OFF, then
+          no checkpoints will be done.  (default ON)
+pop-up-windows
+            If ON Emacs will try to use some window other than the  current
+          one when it spontaneously generates a buffer that it wants you to
+          see  or  when you visit a file (it may split the current window).
+          If OFF the current window is always used.  (default ON)
+prefix-argument
+            Every function invocation  is  always  prefixed  by  a  numeric
+          argument,  either explicitly with ^Un or provide-prefix-argument.
+          The  value  of  the  variable  prefix-argument  is  the  argument
+          prefixed  to  the  invocation of the current MLisp function.  For
+          example, if the following function:
+
+              (defun
+                  (show-it
+                      (message (concat "The prefix argument is " prefix
+                  )
+              )
+
+          were bound to the key ^A then typing ^U^A would cause the message
+          ``The prefix argument is 4'' to  be  printed,  and  ^U13^A  would
+          print  ``The  prefix  argument  is  13''.   See also the commands
+          prefix-argument-loop and provide-prefix-argument.
+prefix-argument-provided
+            True iff the execution of the current function was prefixed  by
+          a numeric argument.  Use prefix-argument to get it's value.
+prefix-string
+            The string that is inserted after an automatic newline has been
+          generated  in  response  to going past the right margin.  This is
+          generally used by  the  language-dependent  commenting  features.
+          (default "")
+quick-redisplay
+            If  ON  Emacs won't worry so much about the case where you have
+          the same buffer on view in several windows  --  it  may  let  the
+          other  windows  be  inaccurate  for  a short while (but they will
+          eventually  be  fixed  up).    Turning  this  ON  speeds up Emacs
+          substantially when the same buffer is on view in several windows.
+          When it is OFF, all windows are always accurate.  (default OFF)
+replace-case
+            If ON Emacs will alter the case  of  strings  substituted  with
+          replace-string  or  query-replace-string to match the case of the
+          original string.  For example, replacing "which" by "that" in the
+          string "Which is silly" results in "That is silly"; in the string
+          "the car which is red" results in "the car that is red";  and  in
+          the string "WHICH THING?"  results in "THAT THING?".
+right-margin
+            The  right  margin  for  automatic  text  justification.   If a
+          character is inserted at the end of a line and to  the  right  of
+          the right margin Emacs will automatically insert at the beginning
+          of the preceding word a newline, tabs and spaces to indent to the
+          left margin, and the prefix string.  With the right margin set to
+          something  like  (for  eg.) 72 you can type in a document without
+          worrying  about  when  to  hit  the  return   key,   Emacs   will
+          automatically do it for you at exactly the right place.
+scroll-step
+            The  number of lines by which windows are scrolled if dot moves
+          outside the window. If dot has moved more than scroll-step  lines
+          outside of the window or scroll-step is zero then dot is centered
+          in  the window.  Otherwise the window is moved up or down scroll-
+          step lines.  Setting scroll-step to 1 will cause  the  window  to
+          scroll  by  1  line if you're typing at the end of the window and
+          hit RETURN.
+silently-kill-processes
+            If ON Emacs will kill processes when it  exits  without  asking
+          any  questions.    Normally,  if  you have processes running when
+          Emacs exits, the question  "You  have  processes  on  the  prowl,
+          should I hunt them down for you" is asked.  (default OFF)
+stack-trace-on-error
+            If ON Emacs will write a MLisp stack trace to the "Stack trace"
+          buffer  whenever  an  error  is  encountered from within an MLisp
+          function (even inside an error-occured).  This is all there is in
+          the way of a debugging facility. (default OFF)
+tab-size
+            A  buffer-specific  variable  which  specifies  the  number  of
+          characters   between  tab  stops.    It's  not  clear  that  user
+          specifiable tabs are a good idea, since the rest of Unix and most
+          other DEC styled operating systems have the  magic  number  8  so
+          deeply wired into them. (default 8)
+this-command
+            The meaning of the variable this-command is tightly intertwined
+          with  the  meaning of the function previous-command.  Look at its
+          documentation for a description of this-command.
+track-eol-on-^N-^P
+            If ON then ^N and ^P will "stick" to the end of a line if  they
+          are started there.  If OFF ^N and ^P will try to stay in the same
+          column  as you move up and down even if you started at the end of
+          a line.  (default ON)
+unlink-checkpoint-files
+            If ON Emacs will unlink the corresponding checkpoint file after
+          the master copy is written -- this avoids having a  lot  of  .CKP
+          files  lying  around but it does compromise safety a little.  For
+          example, as you're editing a file called "foo.c"  Emacs  will  be
+          periodically be writing a checkpoint file called "foo.c.CKP" that
+          contains  all  of your recent changes.  When you rewrite the file
+          (with ^X^F or ^X^S for example) if unlink-checkpoint-files is  ON
+          then  the  .CKP file will be unlinked, otherwise it will be left.
+          (default OFF)
+visible-bell
+            If ON Emacs will attempt to  use  a  visible  bell,  usually  a
+          horrendous  flashing  of the screen, instead of the audible bell,
+          when it is notifying you of some error.  This is a more "socially
+          acceptable" technique  when  people  are  working  in  a  crowded
+          terminal room.  (default OFF)
+wrap-long-lines
+            If  ON  Emacs  will  display  long  lines  by  "wrapping" their
+          continuation  onto  the  next  line  (the  first  line  will   be
+          terminated  with  a '\').  If OFF long lines get truncated at the
+          right edge of the screen and a '$' is display  to  indicate  that
+          this has happened.  (default OFF)
+
+
+
+Index                                                                     9
+
+   Backup-by-copying   7
+          Backup-by-copying-when-linked   7
+          Bind-to-key   2, 3
+
+          Case-fold-search   1, 7
+          Case-word-capitalize   4
+          Comment-column   4, 7
+          Continue-process   6
+
+          Define-buffer-macro   2
+          Define-keyboard-macro   1, 2
+          Define-string-macro   1, 2
+          Display-file-percentage   0
+          Dump-syntax-table   3
+
+          Edit-macro   1
+          Error-occured   8
+          Expand-mlisp-variable   3
+          Expand-mlisp-word   3
+
+          Forward-paren   3
+          Forward-word   4
+
+          Help facilities   2, 7
+
+          Illegal-operation   5
+
+          Justify-paragraph   3
+
+          Left-margin   7
+
+          Mode lines   7
+          Modify-syntax-entry   6
+          Move-to-comment-column   7
+
+          On-output-procedure   4, 6
+
+          Pop-to-buffer   6
+          Prefix arguments   0, 4, 5, 7
+          Prefix-argument   4, 5
+          Prefix-argument-loop   5, 7
+          Provide-prefix-argument   4, 7
+
+          Query-replace-string   7
+
+          Read-abbrev-file   5, 7
+          Read-file   0
+          Region restrictions   4, 5, 6
+          Remove-local-binding   5
+          Replace-string   7
+          Return-to-monitor   4
+          Right-margin   7
+
+          Save-excursion   6
+          Start-process   6
+          Stop-process   1
+          Switch-to-buffer   4, 6
+
+          Use-abbrev-table   1
+          Use-syntax-table   3
+
+          Visit-file   0
+
+          Word-mode-search   1
+          Write-abbrev-file   5
+
+
+
+                             Table of Contents
+
+delete-previous-character                                            RUBOUT
+            Delete the character immediatly preceding  dot;  that  is,  the
+          character  to  the  left of the terminals cursor.  If you've just
+          typed a character, RUBOUT will delete it.  Lines may be merged by
+          deleting newlines.
+newlines.
+Index                                                                     9
+
+   Backup-by-copying   7
+          Backup-by-copying-when-linked   7
+          Bind-to-key   2, 3
+
+          Case-fold-search   1, 7
+          Case-word-capitalize   4
+          Comment-column   4, 7
+          Continue-process   6
+
+          Define-buffer-macro   2
+          Define-keyboard-macro   1, 2
+          Define-string-macro   1, 2
+          Display-file-percentage   0
+          Dump-syntax-table   3
+
+          Edit-macro   1
+          Error-occured   8
+          Expand-mlisp-variable   3
+          Expand-mlisp-word   3
+
+          Forward-paren   3
+          Forward-word   4
+
+          Help facilities   2, 7
+
+          Illegal-operation   5
+
+          Justify-paragraph   3
+
+          Left-margin   7
+
+          Mode lines   7
+          Modify-syntax-entry   6
+          Move-to-comment-column   7
+
+          On-output-procedure   4, 6
+
+          Pop-to-buffer   6
+          Prefix arguments   0, 4, 5, 7
+          Prefix-argument   4, 5
+          Prefix-argument-loop   5, 7
+          Provide-prefix-argument   4, 7
+
+          Query-replace-string   7
+
+          Read-abbrev-file   5, 7
+          Read-file   0
+          Region restrictions   4, 5, 6
+          Remove-local-binding   5
+          Replace-string   7
+          Return-to-monitor   4
+          Right-margin   7
+
+          Save-excursion   6
+          Start-process   6
+          Stop-process   1
+          Switch-to-buffer   4, 6
+
+          Use-abbrev-table   1
+          Use-syntax-table   3
+
+          Visit-file   0
+
+          Word-mode-search   1
+          Write-abbrev-file   5
+
+
+
+                             Table of Contents
+
+defun                                                             [unbound]
+            (defun (name expressions... )... ) is an  MLisp  function  that
+          defines  a  new  MLisp  function  with  the given name and a body
+          composed of the given expressions.  The value of the function  is
+          the value of the last expression.  For example:
+
+            (defun
+                (indent-line                ; this function just sticks a
+              tab at
+                    (save-excursion         ; the beginning of the current
+              line
+                        (beginning-of-line) ; without moving dot.
+                        (insert-string "    ")
+                    )
+                )
+            )
+
+delete-previous-character                                            RUBOUT
+            Delete the character immediatly preceding  dot;  that  is,  the
+          character  to  the  left of the terminals cursor.  If you've just
+          typed a character, RUBOUT will delete it.  Lines may be merged by
+          deleting newlines.
+newlines.
+modify-syntax-entry                                               [unbound]
+            Modify-syntax-entry is used to modify a set of entries  in  the
+          syntax  table  associated with the current buffer.  Syntax tables
+          are  associated  with  buffers  by  using  the   use-syntax-table
+          command.    Syntax tables are used by commands like forward-paren
+          to do a limited form of parsing for language dependent  routines.
+          They  define  such things as which characters are parts of words,
+          which  quote  strings  and  which  delimit  comments  (currently,
+          nothing  uses the comment specification).  To see the contents of
+          a syntax table, use the dump-syntax-table command.
+            The parameter to modify-syntax-entry is a  string  whose  first
+          five  characters  specify  the  interpretation  of  the sixth and
+          following characters.
+            The first character specifies the type.  It may be one  of  the
+          following:
+
+          'w'             A  word  character,  as  used by such commands as
+                          forward-word and case-word-capitalize.
+          space           A character with no special interpretation.
+          '('             A left parenthesis.  Typical candidates for  this
+                          type   are  the  characters  '(',  '['  and  '{'.
+                          Characters of this  type  also  have  a  matching
+                          right parenthesis specified (')', ']' and '}' for
+                          example) which appears as the second character of
+                          the parameter to modify-syntax-entry.
+          ')'             A right parenthesis.  Typical candidates for this
+                          type   are  the  characters  ')',  ']'  and  '}'.
+                          Characters of this type also have a matching left
+                          parenthesis  specified  ('(',  '['  and  '{'  for
+                          example) which appears as the second character of
+                          the parameter to modify-syntax-entry.
+          '"'             A quote character.  The C string delimiters " and
+                          ' are usually given this class, as is the Lisp |.
+          '\'             A prefix character, like \ in C or / in MacLisp.
+
+            The   second   character  of  the  parameter  is  the  matching
+          parenthesis if the character is of the left or right  parenthesis
+          type.  If  you specify that '(' is a right parenthesis matched by
+          ')', then you should also specify that ')' is a left  parenthesis
+          matched by '('.
+            The  third  character, if equal to '{', says that the character
+          described by this syntax entry can begin  a  comment;  the  forth
+          character,  if  equal to '}' says that the character described by
+          this syntax entry can end a comment.  If either the beginning  or
+          ending  comment  sequence  is two characters long, then the fifth
+          character provides the second character of the comment sequence.
+            The sixth and following characters specify which characters are
+          described by this entry; a range of characters can  be  specified
+          by  putting  a  '-'  between  them,  a '-' can be described if it
+          appears as the sixth character.
+            A few examples, to help clear up my muddy exposition:
+
+            (modify-syntax-entry "w    -")  ; makes '-' behave as a normal
+              word
+                                            ; character (ESC-F will
+              consider
+                                            ; one as part of a word)
+            (modify-syntax-entry "(]   [")  ; makes '[' behave as a left
+              parenthesis
+                                            ; which is matched by ']'
+            (modify-syntax-entry ")[   ]")  ; makes ']' behave as a right
+              parenthesis
+                                            ; which is matched by '['
+
+search-reverse                                                           ^R
+            Prompt  for  a  string  and  search  for a match in the current
+          buffer, moving backwards from dot, stopping at the  beginning  of
+          the buffer. Dot is left at the beginning of the matched string if
+          a  match  is found, or is unmoved if not.  See the manual section
+          on  searching,  section  SEARCHING  page   SEARCHING   for   more
+          information.
+use-global-map                                                    [unbound]
+            (use-global-map  "mapname")  uses  the named map to be used for
+          the global interpretation of all key strokes.   use-local-map  is
+          used  to  change the local interpretation of key strokes. See the
+          manual  section  on  keymaps,  KEYMAPS  page  KEYMAPS,  for  more
+          information.
+prefix-argument
+            Every function invocation  is  always  prefixed  by  a  numeric
+          argument,  either explicitly with ^Un or provide-prefix-argument.
+          The  value  of  the  variable  prefix-argument  is  the  argument
+          prefixed  to  the  invocation of the current MLisp function.  For
+          example, if the following function:
+
+            (defun
+                (show-it
+                    (message (concat "The prefix argument is " prefix-
+              argument))
+                )
+            )
+
+          were bound to the key ^A then typing ^U^A would cause the message
+          ``The prefix argument is 4'' to  be  printed,  and  ^U13^A  would
+          print  ``The  prefix  argument  is  13''.   See also the commands
+          prefix-argument-loop and provide-prefix-argument.
+Index                                                                     9
+
+   Backup-by-copying   7
+          Backup-by-copying-when-linked   7
+          Bind-to-key   2, 3
+
+          Case-fold-search   1, 7
+          Case-word-capitalize   4
+          Comment-column   4, 7
+          Continue-process   6
+
+          Define-buffer-macro   2
+          Define-keyboard-macro   1, 2
+          Define-string-macro   1, 2
+          Display-file-percentage   0
+          Dump-syntax-table   3
+
+          Edit-macro   1
+          Error-occured   8
+          Expand-mlisp-variable   3
+          Expand-mlisp-word   3
+
+          Forward-paren   3
+          Forward-word   4
+
+          Help facilities   2, 7
+
+          Illegal-operation   5
+
+          Justify-paragraph   3
+
+          Left-margin   7
+
+          Mode lines   7
+          Modify-syntax-entry   6
+          Move-to-comment-column   7
+
+          On-output-procedure   4, 6
+
+          Pop-to-buffer   6
+          Prefix arguments   0, 4, 5, 7
+          Prefix-argument   4, 5
+          Prefix-argument-loop   5, 7
+          Provide-prefix-argument   4, 7
+
+          Query-replace-string   8
+
+          Read-abbrev-file   5, 7
+          Read-file   0
+          Region restrictions   4, 5, 7
+          Remove-local-binding   5
+          Replace-string   8
+          Return-to-monitor   4
+          Right-margin   7
+
+          Save-excursion   6
+          Start-process   6
+          Stop-process   1
+          Switch-to-buffer   4, 6
+
+          Use-abbrev-table   1
+          Use-syntax-table   3
+
+          Visit-file   0
+
+          Word-mode-search   1
+          Write-abbrev-file   5
+
+
+
+                             Table of Contents
+

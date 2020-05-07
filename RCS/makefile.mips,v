@@ -1,0 +1,151 @@
+head     1.2;
+access   ;
+symbols  ;
+locks    ; strict;
+comment  @@;
+
+
+1.2
+date     93.01.19.14.52.49;  author mogul;  state Exp;
+branches ;
+next     1.1;
+
+1.1
+date     93.01.18.15.06.40;  author mogul;  state Exp;
+branches ;
+next     ;
+
+
+desc
+@@
+
+
+1.2
+log
+@Added filename completion
+@
+text
+@# $Header: makefile.mips,v 1.1 93/01/18 15:06:40 mogul Locked $
+
+DESTROOT=
+DESTDIR=$(DESTROOT)/usr/local/lib/emacs
+EMDESTDIR=$(DESTROOT)/usr/local/bin
+#LIBES=-lloc -lra
+#LIBES= -lra
+LIBES=
+CFLAGS=-g -DNewC -Dpmax -Dmips
+#CFLAGS=-O  -DNewC -Dpmax -Dmips
+obj=buffer.o display.o emacs.o dsp.o window.o keyboard.o simplecoms.o \
+	minibuf.o fileio.o windowman.o search.o subproc.o metacoms.o \
+	errlog.o TrmC100.o TrmAmb.o columns.o options.o TrmTERM.o \
+	macros.o casefiddle.o TrmI400.o mlisp.o ndbm.o \
+	arithmetic.o lispfuncs.o abbrev.o sindex.o TrmVT100.o undo.o\
+	syntax.o TrmMiniB.o TrmTEK4025.o mchan.o dbmanager.o abspath.o \
+	cpyn.o TrmGG.o TrmT1061.o ttyaccept.o sigkludge.o  \
+	TrmVS100.o filecomp.o
+
+ALL= temacs makemail collectmail grep dbadd dbprint dblist loadst filesort
+
+all: $(ALL)
+
+collectmail: collectmail.c sindex.o config.h lock.o
+	cc -o collectmail -g collectmail.c sindex.o lock.o ${LIBES}
+
+makemail: makemail.c config.h
+	cc -o makemail -g makemail.c ${LIBES}
+
+temacs: ${obj}
+	cc -z ${CFLAGS} version.c ${obj} -ltermcap -o temacs ${LIBES}
+
+pemacs: ${obj}
+	rm -f pemacs; cc -z -p ${CFLAGS} ${obj} -ltermlib -o pemacs ${LIBES}
+
+loadst: loadst.c
+	cc -g loadst.c -o loadst ${LIBES}; chmod 2755 loadst
+
+TrmAmb.o: TrmAmb.c Trm.h keyboard.h
+TrmC100.o: TrmC100.c Trm.h display.h
+TrmI400.o: TrmI400.c Trm.h
+TrmMiniB.o: TrmMiniB.c Trm.h display.h
+TrmTEK4025.o: TrmTEK4025.c Trm.h display.h
+TrmTERM.o: TrmTERM.c Trm.h keyboard.h config.h
+TrmVT100.o: TrmVT100.c Trm.h
+TrmVS100.o: TrmVS100.c config.h keyboard.h display.h
+TrmGG.o: TrmGG.c Trm.h
+TrmT1061.o: Trm.h
+abbrev.o: abbrev.c abbrev.h buffer.h window.h keyboard.h syntax.h macros.h mlisp.h
+abspath.o: keyboard.h abspath.c mlisp.h
+arithmetic.o: arithmetic.c mlisp.h keyboard.h buffer.h window.h
+buffer.o: buffer.c buffer.h syntax.h abbrev.h keyboard.h mchan.h mlisp.h
+casefiddle.o: casefiddle.c buffer.h window.h keyboard.h syntax.h
+columns.o: columns.c buffer.h window.h
+dbmanager.o: dbmanager.c ndbm.h buffer.h window.h keyboard.h
+display.o: display.c display.h Trm.h mlisp.h window.h
+dsp.o: dsp.c buffer.h display.h window.h buffer.h config.h keyboard.h Trm.h mlisp.h
+emacs.o: emacs.c buffer.h keyboard.h macros.h keyboard.h config.h mlisp.h
+errlog.o: errlog.c buffer.h window.h keyboard.h
+fileio.o: fileio.c keyboard.h window.h buffer.h config.h mlisp.h
+keyboard.o: keyboard.c keyboard.h window.h buffer.h config.h mchan.h mlisp.h
+lispfuncs.o: lispfuncs.c buffer.h window.h macros.h mlisp.h config.h keyboard.h
+macros.o: macros.c  keyboard.h macros.h buffer.h mlisp.h
+mchan.o: mchan.c mchan.h window.h keyboard.h buffer.h mlisp.h macros.h config.h
+metacoms.o: metacoms.c buffer.h window.h keyboard.h syntax.h syntax.h mlisp.h
+minibuf.o: minibuf.c keyboard.h window.h buffer.h mlisp.h
+mlisp.o: mlisp.c keyboard.h mlisp.h buffer.h window.h macros.h config.h search.h
+options.o: options.c buffer.h window.h macros.h config.h mlisp.h keyboard.h
+pchan.o: pchan.c mchan.h window.h keyboard.h buffer.h mlisp.h macros.h config.h
+search.o: search.c keyboard.h window.h buffer.h syntax.h mlisp.h search.h
+sigkludge.o: sigkludge.c
+simplecoms.o: simplecoms.c keyboard.h window.h buffer.h mlisp.h macros.h
+subproc.o: subproc.c keyboard.h window.h buffer.h mlisp.h
+syntax.o: syntax.c syntax.h buffer.h window.h keyboard.h
+undo.o: undo.c undo.h buffer.h window.h keyboard.h
+window.o: window.c buffer.h display.h window.h Trm.h mlisp.h
+windowman.o: windowman.c buffer.h window.h keyboard.h mlisp.h
+ttyaccept.o: ttyaccept.c config.h buffer.h mlisp.h mchan.h
+filecomp.o: filecomp.c config.h buffer.h window.h keyboard.h mlisp.h
+sindex.o: sindex.c
+	cc -c -O sindex.c
+grep: grep.c
+	cc grep.c -o grep
+dbadd: ndbm.h ndbm.o dbadd.o
+	cc -o dbadd dbadd.o ndbm.o ${LIBES}
+dbprint: ndbm.h ndbm.o dbprint.o
+	cc -o dbprint dbprint.o ndbm.o ${LIBES}
+dblist: ndbm.h ndbm.o dblist.o
+	cc -o dblist dblist.o ndbm.o ${LIBES}
+ndbm.o : ndbm.h ndbm.c
+filesort: filesort.c sindex.o
+	cc -g filesort.c sindex.o -o filesort ${LIBES}
+
+install: $(ALL)
+	mv temacs emacs
+	install -c emacs $(EMDESTDIR)
+	(cd $(EMDESTDIR); rm -f e; ln -s emacs e)
+	install -c makemail $(DESTDIR)
+	install -c collectmail $(DESTDIR)
+	install -c grep $(DESTDIR)
+#	install -c dbadd $(DESTDIR)
+#	install -c dbprint $(DESTDIR)
+#	install -c dblist $(DESTDIR)
+	install -c loadst $(DESTDIR)
+#	install -c dbcreate $(DESTDIR)
+
+clean:
+	rm -f *.o core ,* *BAK *CKP $(ALL) emacs
+@
+
+
+1.1
+log
+@Initial revision
+@
+text
+@d1 1
+a1 1
+# $Header: /a2/wrl_gen_src/emacs/RCS/makefile.pmax,v 1.10 1990/05/08 15:18:36 reid Exp mogul $
+d18 1
+a18 1
+	TrmVS100.o
+d79 1
+@

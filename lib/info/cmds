@@ -1,0 +1,28 @@
+
+File: cmds	Node: Top	Info commands:
+(use l to return to previous display)
+
+Space,^V	Next screenfull
+BackSpace,M-v	Previous screenfull
+?		Get this info
+@		Follow a menu access path (separated by spaces)
+M-^E		Edit the current node
+^L		Redraw the display
+a		Scroll one line down
+b		Top of node
+d		Go to the directory node
+e		Go to the end of the current node
+f		Go to a footnote
+g		Go directly to a named node
+h		Get help
+l		Go to the last node visited
+m		Select a menu item
+n		Go to the next node
+o		Append (output) the current node to a file
+p		Go to the previous node
+q		Quit Info
+r,^R		Reverse search
+s,^S		Search forward
+u		Go to the 'Up' node
+x		Execute emacs command (ESC-X)
+z		Scroll the screen up by one line

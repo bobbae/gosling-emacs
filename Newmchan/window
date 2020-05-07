@@ -1,0 +1,860 @@
+>From mrose.uci@Rand-Relay Thu May  5 18:56:48 1983
+Date: 05 May 83 13:55:31 PST (Thu)
+From: Marshall Rose <mrose.uci@Rand-Relay>
+Return-Path: <Mrose.UCI.UCI@Rand-Relay>
+To: thomas@Utah-20
+
+#! /bin/csh -f
+echo 'Extracting window.c'
+cat <<'//go.sysin dd * xyzzy' > 'window.c'
+/* Window manipulation primitives */
+
+/*		Copyright (c) 1981,1980 James Gosling		*/
+
+/* DJH added substitute Ding() for putchar(07);			*/
+
+#include "buffer.h"
+#include "keyboard.h"
+#include "window.h"
+#include "display.h"
+#include <stdio.h>
+#include <ctype.h>
+#include "mlisp.h"
+
+static
+struct marker *OneLStart;	/* Starting character position of the line
+				   containing dot -- used when doing the
+				   one line redisplay optimization. */
+static OneLValid;		/* True iff OneLStart points at something
+				   valid */
+static OneLLine;		/* The display line which contains dot */
+static MBLine;			/* The line on which the minibuf starts */
+static LineWrapped;		/* True iff the line just dumped has
+				   wrapped, this really slows down the the
+				   redisplay if it's the current line. */
+static QuickRD;			/* True iff quick redisplay alg. is to be
+				   used */
+static UseTime;			/* A counter used to set the time of last use
+				   of a window: for selecting the LRU
+				   window */
+static GSaveMiniBuf;		/* True iff the cursor is in the minibuf */
+char GlobalModeString[30];	/* The global-mode-string variable */
+#ifndef UmcpFeatures
+static PopUpWindows;		/* True iff new windows should be
+				   automatically selected by commands that
+				   play with other buffers (eg. ^X^V and
+				   ^X^B) */
+#else
+int    PopUpWindows;		/* for use in minibuf.c */
+#endif
+static WrapLines;		/* True iff long lines should wrap around */
+static ScrollStep;		/* The number of lines to try scrolling a
+				   window by when dot leaves the window; if
+				   it is <=0 then dot is centered in the
+				   window */
+static SplitHeightThreshhold;	/* If a window is larger than this it will be
+				   considered splitabble when a window is to
+				   be popped up (rather than picking the LRU
+				   window) */
+#ifdef UmcpFeatures
+static MouseX;			/* The X screen coordinate of the mouse
+ */
+static MouseY;			/* The Y screen coordinate of the mouse
+ */
+static struct window *MouseWin;	/* The window corresponding to
+				   (MouseX,MouseY) */
+static MouseDot;		/* The character position corresponding to
+				   (MouseX,MouseY) */
+#endif
+#ifdef UciFeatures
+static int QuitOK;		/* this better be zero on startup */
+#endif
+struct window  *SplitWin ();
+
+#ifdef UmcpFeatures
+/* Move dot to the buffer and character corresponding to some absolute X
+   and Y coordinate. */
+MoveDotToXY () {
+    MouseX = getnum ("X coordinate: ");
+    if (!err)
+	MouseY = getnum ("Y coordinate: ");
+    if (!err) {
+	MouseWin = 0;
+	Cant1LineOpt++;
+	DoDsp (1);
+	if (MouseWin == 0)
+	    error ("The mouse isn't pointing at a part of a buffer");
+	else {
+	    SetWin (MouseWin);
+	    SetDot (MouseDot);
+	}
+    }
+    return 0;
+}
+#endif
+/* initialize the window system */
+InitWin () {
+    register struct window *w =
+                            (struct window *) malloc (sizeof (struct window));
+#ifdef UciFeatures
+    QuitOK = 1;
+#endif
+    windows = w;
+    PopUpWindows = 1;
+    SplitHeightThreshhold = 20;
+    SetDot (1);
+    w -> w_height = ScreenLength;
+    w -> w_prev = 0;
+    w -> w_dot = NewMark ();
+    SetMark (w -> w_dot, bf_cur, 1);
+    w -> w_start = NewMark ();
+    SetMark (w -> w_start, bf_cur, 1);
+    w -> w_force = 0;
+    w -> w_next = 0;
+    w -> w_buf = bf_cur;
+    wn_cur = w;
+    SetWin (SplitWin (w));
+    TieWin (wn_cur, minibuf);
+    ChangeWindowSize (1 - wn_cur -> w_height);
+    SetWin (w);
+    OneLStart = NewMark ();
+    OneLValid = 0;
+    DefStrVar ("global-mode-string", GlobalModeString);
+    DefIntVar ("scroll-step", &ScrollStep);
+    DefIntVar ("quick-redisplay", &QuickRD);
+    DefIntVar ("wrap-long-lines", &WrapLines);
+    DefIntVar ("pop-up-windows", &PopUpWindows);
+    DefIntVar ("split-height-threshhold", &SplitHeightThreshhold);
+#ifdef UmcpFeatures
+    defproc (MoveDotToXY, "move-dot-to-x-y");
+#endif
+}
+
+/* set the current window */
+SetWin (w)
+struct window  *w; {
+    if (w == 0)
+	return;
+    w -> w_lastuse = UseTime++;
+    SetBfp (w -> w_buf);
+    wn_cur = w;
+    bf_cur = 0;
+    Cant1WinOpt++;
+    SetBfp (w -> w_buf);
+}
+
+struct window  *SplitWin (w)
+register struct window *w; {
+    register struct window *n;
+    register struct buffer *old = bf_cur;
+    if (w -> w_height<=4) {
+	error ("You can't have windows smaller than two lines high.");
+	return w;
+    }
+    n = (struct window *) malloc (sizeof (struct window));
+    n -> w_prev = w;
+    n -> w_force = 0;
+    n -> w_next = w -> w_next;
+    w -> w_next = n;
+    if (n -> w_next)
+	n -> w_next -> w_prev = n;
+    n -> w_height = w -> w_height / 2;
+    w -> w_height -= n -> w_height;
+    n -> w_dot = NewMark ();
+    n -> w_lastuse = 0;
+    n -> w_buf = w -> w_buf;
+    n -> w_start = NewMark ();
+    SetMark (n -> w_dot, n->w_buf, ToMark (w -> w_dot));
+    SetMark (n -> w_start, n->w_buf, ToMark (w -> w_start));
+    SetBfp (old);
+    Cant1WinOpt++;
+    return n;
+}
+
+/* split the largest window, and return a pointer to it */
+struct window *SplitLargestWindow () {
+    register struct window *w, *bestw;
+    register besth = -1;
+    for (w = windows; w -> w_next; w = w->w_next)
+	if (w->w_height>besth) besth = w->w_height, bestw = w;
+    return SplitWin (bestw);
+}
+
+/* Delete the indicated window */
+DelWin (w)
+register struct window *w; {
+    if (w -> w_next == 0)	/* Can't delete the last window -- it's the
+				   minibuf */
+	return 0;
+    if (w -> w_prev) {
+	w -> w_prev -> w_height += w -> w_height;
+	w -> w_prev -> w_next = w -> w_next;
+    }
+    else {
+	if (w -> w_next -> w_next == 0)
+	    return 0;
+	windows = w -> w_next;
+	windows -> w_height += w -> w_height;
+    }
+    if (w -> w_next)
+	w -> w_next -> w_prev = w -> w_prev;
+    if (w == wn_cur)
+	SetWin (w -> w_prev ? w -> w_prev : windows);
+    DestMark (w->w_dot);
+    DestMark (w->w_start);
+    Cant1WinOpt++;
+#ifdef UmcpFeatures
+    return 0;
+#endif
+}
+
+/* tie a window to a buffer */
+TieWin (w, b)
+register struct window *w;
+register struct buffer  *b; {
+    register newdot;
+    if (b == 0 || w == 0 || w -> w_buf == b || b -> b_kind == DeletedBuffer)
+	return;
+    w -> w_buf = b;
+    w -> w_force = 0;
+    w -> w_lastuse = UseTime++;
+    newdot = b == bf_cur ? dot : b -> b_EphemeralDot;
+    SetMark (w -> w_dot, b, newdot);
+    SetMark (w -> w_start, b, 1);
+}
+
+/* Change the height of the pointed to window by delta; returns true iff
+   the change succeeds.  Chains forward if dir>0, backward if dir<0 in
+   attempting to find a suitable window. */
+#ifdef UmcpFeatures
+/* if dir=0, changes pointed-to window.  Will not change the last buffer on
+   the screen, that's the minibuffer */
+#endif
+ChgWHeight (w, delta, dir)
+register struct window *w; {
+    while (w)
+#ifndef UmcpFeatures
+	if (w -> w_height + delta >= (w -> w_buf == minibuf ? 1 : 2)
+		&& (dir == 0 || w -> w_buf != minibuf)) {
+#else
+ 	if (w -> w_height + delta >= (w -> w_next ? 2 : 1)
+ 		&& (dir == 0 || w -> w_next)) {
+#endif
+	    Cant1WinOpt++;
+	    w -> w_height += delta;
+	    return 1;
+	}
+	else
+	    w = dir == 0 ? 0 : dir < 0 ? w -> w_prev : w -> w_next;
+    return 0;
+}
+
+#ifdef UmcpFeatures
+/* Change total window height by delta.  We try to change the last windows on
+   the screen, deleting them if necessary.
+ */
+BumpWindows(delta)
+register    delta; {
+    register struct window *w;
+    for (w = windows; w -> w_next;)
+	w = w -> w_next;
+ /* Drop windows off bottom of screen */
+    while (w -> w_prev && w -> w_prev -> w_height + delta < 2)
+	DelWin (w -> w_prev);
+    if (!w -> w_prev) {
+	error ("Emacs bug -- ran out of windows");
+	return 0;
+    }
+ /* Adjust height of bottom window */
+    if (!ChgWHeight (w -> w_prev, delta, 0)) {
+	error ("Emacs bug -- crunching windows");
+	return 0;
+    }
+    return 1;
+}
+#endif
+
+/* find the least recently used window; split if only one window */
+struct window  *LRUwin () {
+    register struct window *w,
+                           *bestw = 0;
+    register    youngest = 07777777777;
+    register    LargestHeight = 0;
+    for (w = windows; w -> w_next; w = w -> w_next) {
+	if ((w -> w_buf == bf_cur ? bf_s1 + bf_s2
+		    : w -> w_buf -> b_size1 + w -> w_buf -> b_size2) == 0)
+	    return w;
+	if (w -> w_lastuse < youngest && w != wn_cur) {
+	    bestw = w;
+	    youngest = w -> w_lastuse;
+	}
+	if (w -> w_height > LargestHeight)
+	    LargestHeight = w -> w_height;
+    }
+    if (bestw == 0 || LargestHeight >= SplitHeightThreshhold)
+	bestw = SplitLargestWindow ();
+    return bestw;
+}
+
+/* make sure that the current window is on the given buffer, either
+   by picking the window that already contains it, the LRU window,
+   or some brand new window */
+WindowOn (bf)
+struct buffer  *bf; {
+    register struct window *w;
+    if ((w = wn_cur) -> w_buf != bf)
+	for (w = windows; w; w = w -> w_next)
+	    if (w -> w_buf == bf)
+		break;
+    if (!w)
+	w = PopUpWindows ? LRUwin () : wn_cur;
+    TieWin (w, bf);
+    SetWin (w);
+}
+
+/* full screen update -- called when absolutely nothing is known or
+   many things have been fiddled with */
+FullUpd () {
+    register struct buffer *keep_bf = bf_cur,
+                           *hit_bf = wn_cur -> w_buf;
+    register struct window *w = windows;
+    register    sline = 1;
+    register    hits = 0;
+    register    slow = 0;
+    while (w) {
+	SetBfp (w -> w_buf);
+	if (bf_cur == hit_bf)
+	    hits++;
+	slow |= w -> w_force;
+	if ( /* w != wn_cur */ 0)
+	    DumpWin (w, sline, 1);
+	else {
+	    register    ldot;
+	    register    dumpstate = 0;
+	    if (w != wn_cur)
+		ldot = dot, SetDot (ToMark (w -> w_dot));
+	    while (dumpstate >= 0 && DumpWin (w, sline, dumpstate == 0)) {
+		slow++;
+		if (w -> w_force) {
+		    SetDot (dumpstate ? ToMark (w -> w_start)
+			    : ScanBf ('\n', ToMark (w -> w_start),
+				w -> w_height / 2));
+		    if (w != wn_cur)
+			SetMark (w -> w_dot, w -> w_buf, dot);
+		    if (dumpstate++)
+			w -> w_force = 0;
+		}
+		else {
+		    register    old,
+		                next;
+		    switch (dumpstate) {
+			case 0: 
+			    dumpstate++;
+			    if (ScrollStep > 0) {
+				old = ToMark (w -> w_start);
+				next = ScanBf ('\n', old,
+				        old>dot ? -ScrollStep-1 : ScrollStep);
+				if (dot >= next)
+				    break;
+			    }
+			case 1: 
+			    next = ScanBf ('\n', dot, -(w -> w_height / 2));
+			    dumpstate++;
+			    break;
+			case 2: 
+			    next = ScanBf ('\n', (old = ToMark (w -> w_start)), 1);
+			    if (old < next && next <= dot)
+				break;
+			default: 
+			    dumpstate++;
+			    next = ToMark (w -> w_start) + 50;
+			    if (dumpstate > 10)
+				dumpstate = -1;
+			case -1: 
+			    break;
+		    }
+		    if (next <= dot)
+			SetMark (w -> w_start, w -> w_buf, next);
+		    else
+			dumpstate = -1;
+		}
+	    }
+	    if (w != wn_cur)
+		SetDot (ldot);
+	    w -> w_force = 0;
+	}
+	sline += w -> w_height;
+	if (RedoModes && w -> w_next)
+	    DumpMode (w, sline - 1);
+	w = w -> w_next;
+    }
+    CantEverOpt = hits > 1 && !QuickRD;
+    SetBfp (keep_bf);
+    return slow;
+}
+
+/* Dump the mode line for window w on line n -- assumes the current buffer
+   is the one associated with window w */
+DumpMode (w, l)
+register struct window *w; {
+    char    buf[300],
+            tbuf[20];
+    register char  *p = buf;
+    register char  *s = bf_mode.md_ModeFormat;
+    register char  *str;
+    register char   c;
+    int     width;
+#ifdef UmcpFeatures
+/* ACT 17-Oct-1982 Added '-' format */
+    int	    negative = 0;
+#endif
+#define ModeC(c) if (p>buf+(sizeof buf)-2) goto out; else *p++ = c;
+#ifndef UmcpFeatures
+    char   *LeftBrack,
+           *RightBrack;
+#endif
+    while (c = *s++)
+	if (c == '%') {
+	    str = 0;
+	    width = 0;
+#ifdef UmcpFeatures
+	    if (*s == '-') {
+		++negative;
+		++s;
+	    }
+#endif
+	    while (isdigit (c = *s++))
+		width = width * 10 + (c - '0');
+	    switch (c) {
+		case 0: 
+		    goto out;
+		default: 
+		    ModeC (c);
+		    break;
+		case 'b': 
+		    str = bf_cur -> b_name;
+		    break;
+		case 'f': 
+		    if ((str = bf_cur -> b_fname) == 0)
+			str = "[None]";
+		    break;
+#ifdef UmcpFeatures
+		case 'F':	/* ACT 17-Oct-1982 */
+		    if ((str = bf_cur -> b_fname) == 0)
+			str = "[None]";
+		    else {
+			register char *str1 = str;
+			while (*str1) if (*str1++ == '/' && *str1) str = str1;
+		    }
+		    break;
+#endif
+		case 'm': 
+		    str = bf_mode.md_ModeString;
+		    break;
+#ifdef UciFeatures
+		case 'w':
+		    str = DontWrite ? bf_mode.md_DontWriteString : "";
+		    break;
+		case 'r':
+		    str = ReadOnly ? bf_mode.md_ReadOnlyString : "";
+		    break;
+#endif
+		case 'M': 
+		    str = GlobalModeString;
+		    break;
+		case '*': 
+		    str = bf_modified ? "*" : "";
+		    break;
+		case 'p': {
+			int     tl = bf_s1 + bf_s2,
+			        d;
+			d = w == wn_cur ? dot : ToMark (w -> w_dot);
+			if (d <= 1)
+			    str = "Top";
+			else
+			    if (d > tl)
+				str = "Bottom";
+			    else {
+				sprintf (tbuf, "%2d%%", (d - 1) * 100 / tl);
+				str = tbuf;
+			    }
+			break;
+		    }
+		case '[': 
+			str = RecurseDepth-MinibufDepth > 10
+					? "*["
+					: ("[[[[[[[[[[" + 10)
+						- (RecurseDepth-MinibufDepth);
+		    break;
+		case ']': 
+			str = RecurseDepth-MinibufDepth > 10
+					? "*]"
+					: ("]]]]]]]]]]" + 10)
+						- (RecurseDepth-MinibufDepth);
+		    break;
+	    }
+	    if (str) {
+#ifdef UmcpFeatures
+		if (negative && width) {
+		    if ((negative = strlen (str)) > width)
+			str += negative - width;
+		    else {
+			while (width > negative) {
+			    width--;
+			    ModeC (' ');
+			}
+		    }
+		}
+#endif
+		while (*str) {
+		    ModeC (*str++);
+		    if (--width == 0)
+			break;
+		}
+		while (--width >= 0)
+		    ModeC (' ');
+	    }
+	}
+	else
+	    ModeC (c);
+out: 
+    *p++ = 0;
+    DumpStr (buf, 300, l, 1);
+}
+
+/* dump the indicated string (with maximum length n) to line l */
+DumpStr (s, n, l, highlight)
+register char  *s; {
+    register    col = 1;
+    register    setcurs = s == MiniBuf && InMiniBuf;
+    setpos (l, col);
+    if (highlight)
+	HighLine ();
+    while (--n >= 0) {
+	register char   c = *s++;
+	if (c == 0)
+	    break;
+#ifndef Umcpfeatures
+	if (c == 011) {
+#else
+	if (c == 011 && bf_mode.md_TabSize >= 1) {
+#endif
+	    col = ((col - 1) / bf_mode.md_TabSize + 1)
+				* bf_mode.md_TabSize + 1;
+	    if (col < ScreenWidth)
+		setpos (l, col);
+	}
+	else
+#ifndef UmcpFeatures
+	    if (c < 040 || c >= 0177)
+		if (CtlArrow) {
+		    col += 2;
+		    if (col < ScreenWidth) {
+			dsputc ('^');
+			dsputc (c < 040 ? (c & 037) + 0100 : '?');
+		    }
+		}
+#else
+	    if (c < 040 || c >= 0177)
+		if (CtlArrow /**/ && (c & 0200) == 0 /**/ ) {
+		    col += 2;
+		    if (col </**/=/**/ ScreenWidth) {
+			dsputc ('^');
+			dsputc (c < 040 ? (c & 037) + 0100 : '?');
+		    }
+		}
+#endif
+		else {
+		    col += 4;
+#ifndef UmcpFeatures
+		    if (col < ScreenWidth) {
+#else
+		    if (col </**/=/**/ ScreenWidth) {
+#endif
+			dsputc ('\\');
+			dsputc (((c >> 6) & 3) + '0');
+			dsputc (((c >> 3) & 7) + '0');
+			dsputc ((c & 7) + '0');
+		    }
+		}
+	    else {
+		col++;
+		if (col < ScreenWidth)
+		    dsputc (c);
+	    }
+    }
+#ifndef UmcpFeatures
+    if (col >= ScreenWidth) {
+#else
+    if (col >/**//*=*//**/ ScreenWidth) {
+#endif
+	setpos (l, ScreenWidth);
+	dsputc ('$');
+    }
+    if (setcurs) {
+	cursY = l;
+	cursX = col > ScreenWidth ? ScreenWidth : col;
+    }
+}
+
+/* dump one line from the current buffer starting at character n onto
+   line l; setting cursX and cursY if appropriate */
+DumpBfl (n, l, w)
+register struct window *w;
+register    n; {
+    register    col = ScreenWidth + 1 - left;
+    register    lim = NumCharacters;
+    int     misseddot = 1;
+    register char   c;
+    while (1) {
+	if (n == dot) {
+	    if (w == wn_cur && (!GSaveMiniBuf || !InMiniBuf)) {
+		cursX = col;
+		cursY = l;
+		DotCol = col;
+		ColValid++;
+		if (cursX > ScreenWidth)
+		    cursX = ScreenWidth;
+	    }
+	    misseddot = 0;
+	}
+	if (n > lim) {
+	    n++;
+	    c = '\n';
+	    break;
+	}
+#ifdef UmcpFeatures
+	if (MouseY == l && MouseX<col && MouseWin==0) {
+	    MouseWin = w;
+	    MouseDot = n-1;
+	}
+#endif
+	c = CharAt (n);
+	n++;
+	if (c == '\n')
+	    break;
+	if (c == 011) {
+	    col = ((col - 1) / bf_mode.md_TabSize + 1)
+				* bf_mode.md_TabSize + 1;
+	    if (col < ScreenWidth)
+		setpos (l, col);
+	    else
+		if (WrapLines) {
+		    n--;
+		    break;
+		}
+	}
+	else
+	    if (c < 040 || c >= 0177)
+		if (CtlArrow && (c & 0200) == 0) {
+		    col += 2;
+		    if (col <= ScreenWidth) {
+			dsputc ('^');
+			dsputc (c < 040 ? (c & 037) + 0100 : '?');
+		    }
+		    else
+			if (WrapLines) {
+			    n--;
+			    break;
+			}
+		}
+		else {
+		    col += 4;
+		    if (col <= ScreenWidth) {
+			dsputc ('\\');
+			dsputc (((c >> 6) & 3) + '0');
+			dsputc (((c >> 3) & 7) + '0');
+			dsputc ((c & 7) + '0');
+		    }
+		    else
+			if (WrapLines) {
+			    n--;
+			    break;
+			}
+		}
+	    else {
+		col++;
+		if (col <= ScreenWidth)
+		    dsputc (c);
+		else
+		    if (WrapLines) {
+			n--;
+			break;
+		    }
+	    }
+    }
+    LineWrapped = 0;
+    if (col > ScreenWidth || c != '\n') {
+	setpos (l, ScreenWidth);
+	dsputc (WrapLines ? '\\' : '$');
+	if (WrapLines)
+	    LineWrapped++;
+    }
+    return misseddot ? n : -n;
+}
+
+/* dump the text from the indicated window on the indicated line;
+   the current buffer must be the one tied to this window */
+DumpWin (Window, Line, CanMove)
+register struct window *Window;
+register    Line; {
+    register    left = Window -> w_next ? Window -> w_height - 1
+    :           Window -> w_height;
+    register    n = ToMark (Window -> w_start);
+    int     misseddot = 1;
+    int     DoClear = 0;
+    if (CanMove && ((n > FirstCharacter && CharAt (n - 1) != '\n')
+		|| n < FirstCharacter)) {
+	n = n < FirstCharacter ? FirstCharacter : ScanBf ('\n', n, -1);
+	SetMark (Window -> w_start, Window -> w_buf, n);
+    }
+    if (Window -> w_next == 0) {
+	MBLine = Line;
+	if (GSaveMiniBuf && MiniBuf == 0)
+	    return 0;
+	clearline (Line);
+	if (n == 1)
+	    DumpStr (MiniBuf, 300, Line, 0);
+#ifndef UmcpFeatures
+	if (*MiniBuf == 0) {
+	    while (--left > 0)
+		clearline (++Line);
+	    return 0;
+	}
+#else
+	if (MiniBuf) {
+	    if (n == 1)
+		DumpStr (MiniBuf, 300, Line, 0);
+	    if (*MiniBuf == 0) {
+		while (--left > 0)
+		    clearline (++Line);
+		return 0;
+	    }
+	}
+#endif
+    }
+    else
+	clearline (Line);
+    while (--left >= 0) {
+	register    next;
+	if (DoClear)
+	    clearline (Line);
+	DoClear++;
+	next = DumpBfl (n, Line++, Window);
+	if (next < 0) {
+	    if (Window == wn_cur) {
+		SetMark (OneLStart, bf_cur, LineWrapped ? 1 : n);
+		OneLValid = !LineWrapped;
+		OneLLine = Line - 1;
+	    }
+	    next = -next;
+	    misseddot = 0;
+	}
+	n = next;
+    }
+    return misseddot;
+}
+
+/* leave emacs after spitting some expletive on the tty,
+   presumes that the tty modes are safe */
+quit (code, fmt, args) {
+#ifdef UciFeatures
+#ifdef subprocesses
+    kill_processes ();
+#endif
+    QuitMpx ();
+    if (QuitOK)
+	RstDsp ();
+#endif
+    _doprnt (fmt, &args, stderr);
+#ifdef UciFeatures
+#ifdef OneEmacsPerTty
+    UnlockTty ();
+#endif
+#endif
+    exit (code);
+}
+
+/* Scan the current buffer for the k'th occurrence of character c,
+   starting at position n; k may be negative.  Returns the position
+   of the character following the one found */
+ScanBf (c, n, k)
+char    c;
+register    n; {
+    while (k)
+	if (k > 0) {
+	    do {
+		if (n > NumCharacters)
+		    return n;
+		if (CharAt (n) == c)
+		    break;
+		n++;
+	    } while (1);
+	    if(--k) n++;
+	}
+	else {
+	    do {
+		n--;
+		if (n < FirstCharacter)
+		    return FirstCharacter;
+		if (CharAt (n) == c)
+		    break;
+	    } while (1);
+	    k++;
+	}
+    return n + 1;
+}
+
+/* do a screen update, taking possible shortcuts into account */
+DoDsp (SaveMiniBuf) {
+    register    SlowUpdate = 0;
+    register    DoneMiniBuf = 0;
+    GSaveMiniBuf = SaveMiniBuf;
+    if (ScreenGarbaged || err || (LastRedisplayPaused && !InMiniBuf))
+	Cant1WinOpt++, DumpMiniBuf++, LastRedisplayPaused = 0;
+    if (Cant1WinOpt)
+	Cant1LineOpt++, RedoModes++;
+    if (!Cant1LineOpt && OneLValid && !OneLStart -> m_modified
+	    && OneLStart -> m_buf == bf_cur) {
+	register    n = ToMark (OneLStart);
+	clearline (OneLLine);
+	if (MiniBuf && wn_cur -> w_next == 0) {
+	    if (n == 1)
+		DumpStr (MiniBuf, 300, OneLLine, 0);
+	    DoneMiniBuf++;
+	}
+	if (DumpBfl (n, OneLLine, wn_cur) < 0 && !LineWrapped)
+	    goto update;	/* we made it ! */
+	else
+	    if (!WrapLines)
+		SlowUpdate = -1;
+    }
+    DoneMiniBuf++;
+    SlowUpdate++;
+    OneLValid = 0;
+    if (FullUpd ())
+	SlowUpdate = 1;
+update: 
+    if (MiniBuf && (!GSaveMiniBuf || *MiniBuf)) {
+	if (!DoneMiniBuf) {
+	    clearline (MBLine);
+	    DumpStr (MiniBuf, 300, MBLine, 0);
+	}
+	if (ResetMiniBuf) {
+	    MiniBuf = ResetMiniBuf;
+	    if (*ResetMiniBuf == 0) ResetMiniBuf = 0;
+	}
+	else
+	    MiniBuf = *MiniBuf ? "" : 0;
+    }
+    UpdateScreen (SlowUpdate);
+    if (err) {
+	Ding ();
+	err = 0;
+    }
+    Cant1LineOpt = 0;
+    Cant1WinOpt = CantEverOpt;
+    fflush (stdout);
+}
+'//go.sysin dd * xyzzy'
+
