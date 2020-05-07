@@ -15,7 +15,7 @@ a lot of controversy and disputes between James Gosling and Richard Stallman, as
 
 Here is the beginning of the display.c:
 
-		 /-------------\
+		         /-------------\
 			/		\
 		       /		 \
 		      /			  \
